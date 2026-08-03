@@ -562,191 +562,136 @@ function destaquesRodada(rod){
   return { cheia: lista[0], murcha: lista[lista.length-1], n: lista.length, top: lista };
 }
 
-/* bola de futebol: cheia (redonda) ou murcha (achatada e amassada) */
-function bola(g, cx, cy, r, murcha){
-  g.save();
-  g.translate(cx, cy);
-  if(murcha) g.scale(1, 0.52);          // achatada
-  // sombra
-  g.beginPath(); g.arc(0, r*0.12, r, 0, Math.PI*2);
-  g.fillStyle='rgba(0,0,0,.25)'; g.fill();
-  // corpo
-  g.beginPath(); g.arc(0,0,r,0,Math.PI*2);
-  const gr = g.createRadialGradient(-r*0.35,-r*0.4,r*0.1, 0,0,r*1.15);
-  gr.addColorStop(0,'#ffffff'); gr.addColorStop(1, murcha?'#c9cec6':'#e6e9e4');
-  g.fillStyle=gr; g.fill();
-  g.lineWidth=r*0.07; g.strokeStyle='#12100e'; g.stroke();
-  // pentágono central
-  g.beginPath();
-  for(let i=0;i<5;i++){
-    const a=-Math.PI/2 + i*2*Math.PI/5, x=Math.cos(a)*r*0.4, y=Math.sin(a)*r*0.4;
-    i?g.lineTo(x,y):g.moveTo(x,y);
-  }
-  g.closePath(); g.fillStyle='#12100e'; g.fill();
-  // gomos saindo do pentágono
-  g.lineWidth=r*0.075; g.strokeStyle='#12100e';
-  for(let i=0;i<5;i++){
-    const a=-Math.PI/2 + i*2*Math.PI/5 + Math.PI/5;
-    g.beginPath();
-    g.moveTo(Math.cos(a)*r*0.42, Math.sin(a)*r*0.42);
-    g.lineTo(Math.cos(a)*r*0.95, Math.sin(a)*r*0.95);
-    g.stroke();
-  }
-  g.restore();
-  if(murcha){                            // vinco de bola vazia
-    g.save(); g.translate(cx,cy);
-    g.beginPath(); g.moveTo(-r*0.8, r*0.2);
-    g.quadraticCurveTo(0, -r*0.12, r*0.8, r*0.2);
-    g.lineWidth=r*0.09; g.strokeStyle='rgba(0,0,0,.45)'; g.stroke();
-    g.restore();
-  }
-}
-
-/* escudo com faixa, no estilo dos emblemas de time */
-function escudo(g, cx, topo, larg, alt, cor1, cor2, titulo, sub){
-  const m = larg/2;
+/* selo/emblema com o titulo em duas linhas, sem bola */
+function selo(g, cx, cy, larg, alt, c1, c2, borda, l1, l2){
+  const m=larg/2, t=cy-alt/2;
   g.save();
   g.beginPath();
-  g.moveTo(cx-m, topo);
-  g.lineTo(cx+m, topo);
-  g.lineTo(cx+m, topo+alt*0.56);
-  g.quadraticCurveTo(cx+m, topo+alt*0.9, cx, topo+alt);
-  g.quadraticCurveTo(cx-m, topo+alt*0.9, cx-m, topo+alt*0.56);
+  g.moveTo(cx-m, t+16); g.quadraticCurveTo(cx-m, t, cx-m+16, t);
+  g.lineTo(cx+m-16, t);  g.quadraticCurveTo(cx+m, t, cx+m, t+16);
+  g.lineTo(cx+m, t+alt*0.52);
+  g.quadraticCurveTo(cx+m, t+alt*0.86, cx, t+alt);
+  g.quadraticCurveTo(cx-m, t+alt*0.86, cx-m, t+alt*0.52);
   g.closePath();
-  const gr = g.createLinearGradient(cx-m, topo, cx+m, topo+alt);
-  gr.addColorStop(0, cor1); gr.addColorStop(1, cor2);
+  const gr=g.createLinearGradient(cx-m,t,cx+m,t+alt);
+  gr.addColorStop(0,c1); gr.addColorStop(1,c2);
   g.fillStyle=gr; g.fill();
-  g.lineWidth=7; g.strokeStyle='#12100e'; g.stroke();
-  g.clip();
-  // faixa diagonal clara
-  g.fillStyle='rgba(255,255,255,.10)';
-  g.beginPath(); g.moveTo(cx-m, topo+alt*0.30); g.lineTo(cx+m, topo+alt*0.12);
-  g.lineTo(cx+m, topo+alt*0.32); g.lineTo(cx-m, topo+alt*0.50); g.closePath(); g.fill();
+  g.lineWidth=9; g.strokeStyle=borda; g.stroke();
+  g.save(); g.clip();
+  g.fillStyle='rgba(255,255,255,.13)';
+  g.beginPath(); g.moveTo(cx-m,t+alt*0.30); g.lineTo(cx+m,t+alt*0.10);
+  g.lineTo(cx+m,t+alt*0.28); g.lineTo(cx-m,t+alt*0.48); g.closePath(); g.fill();
   g.restore();
-  // titulo
+  g.restore();
   g.textAlign='center';
-  g.fillStyle='#12100e'; g.font='700 60px Oswald, Impact, sans-serif';
-  g.fillText(titulo, cx+3, topo+alt*0.60+3);
-  g.fillStyle='#ffffff';
-  g.fillText(titulo, cx, topo+alt*0.60);
-  if(sub){ g.fillStyle='rgba(255,255,255,.9)'; g.font='500 26px Oswald, sans-serif';
-           g.fillText(sub, cx, topo+alt*0.60+34); }
+  const sombra=(txt,y,px)=>{
+    g.font=`700 ${px}px Oswald, Impact, sans-serif`;
+    g.fillStyle='rgba(0,0,0,.45)'; g.fillText(txt,cx+4,y+4);
+    g.fillStyle='#ffffff';         g.fillText(txt,cx,y);
+  };
+  sombra(l1, t+alt*0.36, 52);
+  sombra(l2, t+alt*0.68, 92);
   g.textAlign='left';
 }
 
-const FORMATOS = {
-  quadrado: {w:1080, h:1080, rot:'Quadrado', sub:'1080×1080 · WhatsApp e feed'},
-  retrato:  {w:1080, h:1350, rot:'Retrato',  sub:'1080×1350 · feed do Instagram'},
-  story:    {w:1080, h:1920, rot:'Story',    sub:'1080×1920 · status e stories'}
-};
-
 function desenharArte(rod){
-  const c = document.getElementById('cv');
-  if(!c) return;
-  const g = c.getContext('2d');
-  const fmt = FORMATOS[window.__fmt || 'quadrado'];
-  const S = fmt.w, H = fmt.h;
-  c.width = S; c.height = H;
-  const dd = destaquesRodada(rod);
-  if(!dd.cheia) return;
+  const c=document.getElementById('cv'); if(!c) return;
+  const g=c.getContext('2d');
+  const S=1080, H=1350;
+  c.width=S; c.height=H;
+  const dd=destaquesRodada(rod); if(!dd.cheia) return;
 
-  const V='#0f7b3f', V2='#128a46', OURO='#c8901a', ESC='#12100e', BR='#ffffff';
+  const V='#0f7b3f', V2='#128a46', OURO='#c8901a', ESC='#12100e', BR='#ffffff', VERM='#b23b2e';
   const F=(p,w)=>`${w} ${p}px Oswald, Impact, sans-serif`;
-  const R=(t)=>`${t}px Roboto, Arial, sans-serif`;
-  const cortar=(txt,px,max)=>{ g.font=px; let s=txt;
+  const R=(t,w)=>`${w||400} ${t}px Roboto, Arial, sans-serif`;
+  const cortar=(txt,fonte,max)=>{ g.font=fonte; let s=txt;
     while(g.measureText(s).width>max && s.length>4) s=s.slice(0,-1);
     return s===txt?txt:s.trim()+'…'; };
 
-  // ---- fundo: gramado listrado + vinheta ----
+  // fundo
   g.fillStyle=V2; g.fillRect(0,0,S,H);
-  g.fillStyle=V; for(let x=0;x<S;x+=170) g.fillRect(x,0,85,H);
-  g.strokeStyle='rgba(255,255,255,.10)'; g.lineWidth=7;
-  g.beginPath(); g.arc(S/2,H/2,Math.min(S,H)*0.3,0,Math.PI*2); g.stroke();
-  const vin=g.createRadialGradient(S/2,H/2,Math.min(S,H)*0.3,S/2,H/2,Math.max(S,H)*0.72);
-  vin.addColorStop(0,'rgba(0,0,0,0)'); vin.addColorStop(1,'rgba(0,0,0,.45)');
+  g.fillStyle=V; for(let x=0;x<S;x+=168) g.fillRect(x,0,84,H);
+  const vin=g.createRadialGradient(S/2,H/2,260,S/2,H/2,900);
+  vin.addColorStop(0,'rgba(0,0,0,0)'); vin.addColorStop(1,'rgba(0,0,0,.5)');
   g.fillStyle=vin; g.fillRect(0,0,S,H);
 
-  // ---- topo ----
-  const hTopo = 132;
-  g.fillStyle=ESC; g.fillRect(0,0,S,hTopo);
-  g.fillStyle=OURO; g.fillRect(0,hTopo,S,5);
+  // topo
+  g.fillStyle=ESC; g.fillRect(0,0,S,150);
+  g.fillStyle=OURO; g.fillRect(0,150,S,6);
   g.textAlign='center';
-  g.fillStyle=BR; g.font=F(44,'600');
-  g.fillText('LIGA VILA CARTOBROTHERS', S/2, 66);
-  g.fillStyle='#b9c2b4'; g.font=R(25);
-  g.fillText(`Rodada ${rod} · Temporada ${D.temporada||2026}`, S/2, 106);
+  g.fillStyle=BR; g.font=F(50,'600');
+  g.fillText('LIGA VILA CARTOBROTHERS', S/2, 72);
+  g.fillStyle='#b9c2b4'; g.font=R(28,500);
+  g.fillText(`RODADA ${rod}  ·  TEMPORADA ${D.temporada||2026}`, S/2, 116);
 
-  // area util entre o topo e o rodape, distribuida conforme o formato
-  const hRod = 74;
-  const util = H - hTopo - hRod;
-  const topoE = hTopo + util*0.06;
-  const yPlaca = topoE + 415 + util*0.10;
+  const cxE=S*0.265, cxD=S*0.735;
 
-  // ---- dois emblemas lado a lado ----
-  const cxE = S*0.27, cxD = S*0.73, largE = 340, altE = 300;
-  bola(g, cxE, topoE+8,  92, false);
-  bola(g, cxD, topoE+34, 92, true);
-  escudo(g, cxE, topoE+70, largE, altE, '#12a04a', '#0b6431', 'BOLA', 'CHEIA');
-  escudo(g, cxD, topoE+70, largE, altE, '#d4a017', '#a06a0c', 'BOLA', 'MURCHA');
+  // emblemas
+  selo(g, cxE, 300, 400, 210, '#16b355','#0a5c2c','#064a23', 'BOLA','CHEIA');
+  selo(g, cxD, 300, 400, 210, '#e0a11c','#8a5a0c','#3a2607', 'BOLA','MURCHA');
 
-  // ---- zoeira: fogo e caveira grandes, escapando do escudo ----
-  g.save();
-  g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=18; g.shadowOffsetY=5;
-  g.font='150px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  // emojis grandes
+  g.save(); g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=20; g.shadowOffsetY=6;
+  g.font='128px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   g.textAlign='center';
-  g.save(); g.translate(cxE-152, topoE+300); g.rotate(-0.22); g.fillText('🔥',0,0); g.restore();
-  g.save(); g.translate(cxD+152, topoE+300); g.rotate( 0.22); g.fillText('💀',0,0); g.restore();
+  g.save(); g.translate(cxE-215,335); g.rotate(-0.20); g.fillText('🔥',0,0); g.restore();
+  g.save(); g.translate(cxD+215,335); g.rotate( 0.20); g.fillText('💀',0,0); g.restore();
   g.restore();
-  g.textAlign='left';
 
-  // ---- placas com os times ----
-  function placa(cx, y, cor, time, pts, cap){
-    const w=430, h=196, x=cx-w/2;
-    g.fillStyle='rgba(0,0,0,.22)'; g.fillRect(x+5,y+6,w,h);
+  // destaque principal de cada lado
+  function principal(cx, y, cor, time, pts, cap){
+    const w=452, h=214, x=cx-w/2;
+    g.fillStyle='rgba(0,0,0,.25)'; g.fillRect(x+6,y+7,w,h);
     g.fillStyle=BR; g.fillRect(x,y,w,h);
-    g.fillStyle=cor; g.fillRect(x,y,w,9);
+    g.fillStyle=cor; g.fillRect(x,y,w,10);
     g.textAlign='center';
-    g.fillStyle=ESC; g.font=F(34,'600');
-    g.fillText(cortar(time, F(34,'600'), w-40), cx, y+62);
-    g.fillStyle=cor; g.font=F(74,'600');
-    g.fillText(pts.toFixed(2).replace('.',','), cx, y+140);
-    g.fillStyle='#7a8378'; g.font=R(21);
-    g.fillText(cap ? 'capitão: '+cap : 'sem capitão', cx, y+176);
+    g.fillStyle=ESC; g.font=F(38,'600');
+    g.fillText(cortar(time,F(38,'600'),w-36), cx, y+72);
+    g.fillStyle=cor; g.font=F(86,'700');
+    g.fillText(pts.toFixed(2).replace('.',','), cx, y+156);
+    g.fillStyle='#8a9186'; g.font=R(22,400);
+    g.fillText(cap?'capitão: '+cap:'sem capitão', cx, y+192);
     g.textAlign='left';
   }
-  placa(cxE, yPlaca, V,        dd.cheia.time,  dd.cheia.pontos,  dd.cheia.cap);
-  placa(cxD, yPlaca, '#b23b2e',dd.murcha.time, dd.murcha.pontos, dd.murcha.cap);
+  principal(cxE, 440, V,    dd.cheia.time,  dd.cheia.pontos,  dd.cheia.cap);
+  principal(cxD, 440, VERM, dd.murcha.time, dd.murcha.pontos, dd.murcha.cap);
 
-  // ---- nos formatos altos, sobra espaco: mostra o topo da rodada ----
-  if(H > 1200 && dd.top && dd.top.length){
-    const yT = yPlaca + 240;
-    g.textAlign='center'; g.fillStyle='rgba(255,255,255,.85)'; g.font=F(30,'500');
-    g.fillText('TOP 5 DA RODADA', S/2, yT);
-    g.font=R(30); g.textAlign='left';
-    dd.top.slice(0,5).forEach((t,i)=>{
-      const y = yT + 56 + i*52;
-      g.fillStyle='rgba(255,255,255,.20)'; g.fillRect(S*0.12, y-34, S*0.76, 44);
-      g.fillStyle='#ffffff'; g.font=F(28,'500');
-      g.fillText(`${i+1}º`, S*0.14, y);
-      g.font=R(27);
-      g.fillText(cortar(t.time, R(27), S*0.48), S*0.20, y);
-      g.textAlign='right'; g.font=F(29,'600');
-      g.fillText(t.pontos.toFixed(2).replace('.',','), S*0.86, y);
+  // listas: 5 melhores e 5 piores
+  function lista(cx, y, titulo, cor, itens, posDe){
+    const w=452, x=cx-w/2;
+    g.textAlign='center'; g.fillStyle='rgba(255,255,255,.92)'; g.font=F(30,'600');
+    g.fillText(titulo, cx, y);
+    itens.forEach((t,i)=>{
+      const yy=y+42+i*62;
+      g.fillStyle= i%2 ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.20)';
+      g.fillRect(x, yy-34, w, 54);
+      g.fillStyle=cor; g.fillRect(x, yy-34, 7, 54);
+      g.textAlign='left'; g.fillStyle='rgba(255,255,255,.75)'; g.font=F(28,'600');
+      g.fillText(posDe(i)+'º', x+20, yy+4);
+      g.fillStyle=BR; g.font=R(27,500);
+      g.fillText(cortar(t.time,R(27,500),w-190), x+72, yy+4);
+      g.textAlign='right'; g.font=F(31,'600');
+      g.fillText(t.pontos.toFixed(2).replace('.',','), x+w-20, yy+4);
       g.textAlign='left';
     });
   }
+  const todos=dd.top||[];
+  const melhores=todos.slice(0,5);
+  const piores=todos.slice(-5).reverse();
+  lista(cxE, 712, 'TOP 5 DA RODADA', '#4ade80', melhores, i => i+1);
+  lista(cxD, 712, 'OS 5 PIORES',     '#f0857a', piores,   i => todos.length - i);
 
-  // ---- rodape ----
-  g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(0,H-hRod,S,hRod);
-  g.textAlign='center'; g.fillStyle='#cfd8cb'; g.font=R(23);
-  g.fillText(`${dd.n} times na disputa · dados oficiais do Cartola FC`, S/2, H-30);
+  // rodape
+  g.fillStyle='rgba(0,0,0,.5)'; g.fillRect(0,H-80,S,80);
+  g.textAlign='center'; g.fillStyle='#cfd8cb'; g.font=R(24,400);
+  g.fillText(`${dd.n} times na disputa · dados oficiais do Cartola FC`, S/2, H-32);
   g.textAlign='left';
 }
 
 function baixarArte(rod){
   const c = document.getElementById('cv');
   const a = document.createElement('a');
-  a.download = `liga-rodada-${rod}-${window.__fmt||'quadrado'}.png`;
+  a.download = `liga-rodada-${rod}.png`;
   a.href = c.toDataURL('image/png');
   a.click();
 }
@@ -766,12 +711,6 @@ function telaRodada(){
     <div class="hint">Arte pronta para mandar no grupo · entre os ${dd.n} inscritos no anual</div>
     <div class="painel">
       <div class="plinha">
-        <span class="rot">Formato</span>
-        ${Object.entries(FORMATOS).map(([k,f])=>`<button class="chip ${(window.__fmt||'quadrado')===k?'on':''}"
-           onclick="window.__fmt='${k}';render()" title="${f.sub}">${f.rot}</button>`).join('')}
-        <span class="legenda" style="margin:0">${FORMATOS[window.__fmt||'quadrado'].sub}</span>
-      </div>
-      <div class="plinha">
         <span class="rot">Rodada</span>
         ${rods.map(r=>`<button class="chip ${r===rod?'on':''}"
            onclick="window.__rodArte=${r};render()">${r}</button>`).join('')}
@@ -789,8 +728,8 @@ function telaRodada(){
             <div class="pt">${num(dd.murcha.pontos)} pontos${dd.murcha.cap?' · capitão '+esc(dd.murcha.cap):''}</div></div>
         </div>
         <button class="btbaixar" onclick="baixarArte(${rod})">⬇ Baixar imagem</button>
-        <div class="legenda">Escolha o formato e a rodada acima. A arte é gerada na hora,
-          em alta resolução, pronta para postar.</div>
+        <div class="legenda">Arte em 1080×1350, gerada na hora. Escolha a rodada acima
+          para montar a de qualquer uma.</div>
       </div>
     </div>
   </div>`;
