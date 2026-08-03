@@ -249,6 +249,10 @@
   .btpdf{background:var(--card);color:var(--green);border:1px solid var(--line);border-radius:8px;
          padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
   .btpdf:hover{background:var(--greenL);border-color:var(--green)}
+  .espaco{flex:1}
+  header .btpdf{align-self:flex-start;margin-top:4px}
+  /* vaga ainda nao definida no chaveamento */
+  .duelo .lado.vago{color:var(--dim);font-style:italic;opacity:.7}
   .acoes .dica{font-size:11.5px;color:var(--dim);flex:1;min-width:180px}
 
   @media (max-width:640px){ .app{padding:10px 8px 34px} .fix2{min-width:114px} .fase{min-width:178px} }
@@ -290,6 +294,8 @@
       <div class="sub" id="sub"></div>
       <div class="atz" id="atz"></div>
     </div>
+    <div class="espaco"></div>
+    <button class="btpdf rodapenao" onclick="window.print()" title="Salva a aba aberta em PDF">🖨 PDF</button>
   </header>
 
   <nav id="nav"></nav>
@@ -529,6 +535,78 @@ function destaquesRodada(rod){
   return { cheia: lista[0], murcha: lista[lista.length-1], n: lista.length };
 }
 
+/* bola de futebol: cheia (redonda) ou murcha (achatada e amassada) */
+function bola(g, cx, cy, r, murcha){
+  g.save();
+  g.translate(cx, cy);
+  if(murcha) g.scale(1, 0.52);          // achatada
+  // sombra
+  g.beginPath(); g.arc(0, r*0.12, r, 0, Math.PI*2);
+  g.fillStyle='rgba(0,0,0,.25)'; g.fill();
+  // corpo
+  g.beginPath(); g.arc(0,0,r,0,Math.PI*2);
+  const gr = g.createRadialGradient(-r*0.35,-r*0.4,r*0.1, 0,0,r*1.15);
+  gr.addColorStop(0,'#ffffff'); gr.addColorStop(1, murcha?'#c9cec6':'#e6e9e4');
+  g.fillStyle=gr; g.fill();
+  g.lineWidth=r*0.07; g.strokeStyle='#12100e'; g.stroke();
+  // pentágono central
+  g.beginPath();
+  for(let i=0;i<5;i++){
+    const a=-Math.PI/2 + i*2*Math.PI/5, x=Math.cos(a)*r*0.4, y=Math.sin(a)*r*0.4;
+    i?g.lineTo(x,y):g.moveTo(x,y);
+  }
+  g.closePath(); g.fillStyle='#12100e'; g.fill();
+  // gomos saindo do pentágono
+  g.lineWidth=r*0.075; g.strokeStyle='#12100e';
+  for(let i=0;i<5;i++){
+    const a=-Math.PI/2 + i*2*Math.PI/5 + Math.PI/5;
+    g.beginPath();
+    g.moveTo(Math.cos(a)*r*0.42, Math.sin(a)*r*0.42);
+    g.lineTo(Math.cos(a)*r*0.95, Math.sin(a)*r*0.95);
+    g.stroke();
+  }
+  g.restore();
+  if(murcha){                            // vinco de bola vazia
+    g.save(); g.translate(cx,cy);
+    g.beginPath(); g.moveTo(-r*0.8, r*0.2);
+    g.quadraticCurveTo(0, -r*0.12, r*0.8, r*0.2);
+    g.lineWidth=r*0.09; g.strokeStyle='rgba(0,0,0,.45)'; g.stroke();
+    g.restore();
+  }
+}
+
+/* escudo com faixa, no estilo dos emblemas de time */
+function escudo(g, cx, topo, larg, alt, cor1, cor2, titulo, sub){
+  const m = larg/2;
+  g.save();
+  g.beginPath();
+  g.moveTo(cx-m, topo);
+  g.lineTo(cx+m, topo);
+  g.lineTo(cx+m, topo+alt*0.56);
+  g.quadraticCurveTo(cx+m, topo+alt*0.9, cx, topo+alt);
+  g.quadraticCurveTo(cx-m, topo+alt*0.9, cx-m, topo+alt*0.56);
+  g.closePath();
+  const gr = g.createLinearGradient(cx-m, topo, cx+m, topo+alt);
+  gr.addColorStop(0, cor1); gr.addColorStop(1, cor2);
+  g.fillStyle=gr; g.fill();
+  g.lineWidth=7; g.strokeStyle='#12100e'; g.stroke();
+  g.clip();
+  // faixa diagonal clara
+  g.fillStyle='rgba(255,255,255,.10)';
+  g.beginPath(); g.moveTo(cx-m, topo+alt*0.30); g.lineTo(cx+m, topo+alt*0.12);
+  g.lineTo(cx+m, topo+alt*0.32); g.lineTo(cx-m, topo+alt*0.50); g.closePath(); g.fill();
+  g.restore();
+  // titulo
+  g.textAlign='center';
+  g.fillStyle='#12100e'; g.font='700 60px Oswald, Impact, sans-serif';
+  g.fillText(titulo, cx+3, topo+alt*0.60+3);
+  g.fillStyle='#ffffff';
+  g.fillText(titulo, cx, topo+alt*0.60);
+  if(sub){ g.fillStyle='rgba(255,255,255,.9)'; g.font='500 26px Oswald, sans-serif';
+           g.fillText(sub, cx, topo+alt*0.60+34); }
+  g.textAlign='left';
+}
+
 function desenharArte(rod){
   const c = document.getElementById('cv');
   if(!c) return;
@@ -539,59 +617,69 @@ function desenharArte(rod){
   if(!dd.cheia) return;
 
   const V='#0f7b3f', V2='#128a46', OURO='#c8901a', ESC='#12100e', BR='#ffffff';
-  const F = (p,w) => `${w} ${p}px Oswald, Impact, sans-serif`;
-  const R = (t) => `${t}px Roboto, Arial, sans-serif`;
-  const cortar = (txt, px, max) => {
-    g.font = px; let s = txt;
-    while (g.measureText(s).width > max && s.length > 4) s = s.slice(0, -1);
-    return s === txt ? txt : s.trim() + '…';
-  };
+  const F=(p,w)=>`${w} ${p}px Oswald, Impact, sans-serif`;
+  const R=(t)=>`${t}px Roboto, Arial, sans-serif`;
+  const cortar=(txt,px,max)=>{ g.font=px; let s=txt;
+    while(g.measureText(s).width>max && s.length>4) s=s.slice(0,-1);
+    return s===txt?txt:s.trim()+'…'; };
 
-  // fundo com listras de campo
-  g.fillStyle = V2; g.fillRect(0,0,S,S);
-  g.fillStyle = V;
-  for(let x=0; x<S; x+=180) g.fillRect(x,0,90,S);
-  g.fillStyle = 'rgba(255,255,255,.07)';
-  g.beginPath(); g.arc(S/2, S/2, 300, 0, Math.PI*2); g.lineWidth=6;
-  g.strokeStyle='rgba(255,255,255,.09)'; g.stroke();
+  // ---- fundo: gramado listrado + vinheta ----
+  g.fillStyle=V2; g.fillRect(0,0,S,S);
+  g.fillStyle=V; for(let x=0;x<S;x+=170) g.fillRect(x,0,85,S);
+  g.strokeStyle='rgba(255,255,255,.10)'; g.lineWidth=7;
+  g.beginPath(); g.arc(S/2,S/2,320,0,Math.PI*2); g.stroke();
+  const vin=g.createRadialGradient(S/2,S/2,S*0.3,S/2,S/2,S*0.78);
+  vin.addColorStop(0,'rgba(0,0,0,0)'); vin.addColorStop(1,'rgba(0,0,0,.45)');
+  g.fillStyle=vin; g.fillRect(0,0,S,S);
 
-  // faixa superior
-  g.fillStyle = ESC; g.fillRect(0,0,S,150);
-  g.fillStyle = OURO; g.fillRect(0,150,S,6);
-  g.fillStyle = BR; g.font = F(46,'600'); g.textAlign='left';
-  g.fillText('LIGA VILA CARTOBROTHERS', 48, 78);
-  g.fillStyle = '#b9c2b4'; g.font = R(26);
-  g.fillText(`Rodada ${rod} · Temporada ${D.temporada||2026}`, 50, 118);
+  // ---- topo ----
+  g.fillStyle=ESC; g.fillRect(0,0,S,132);
+  g.fillStyle=OURO; g.fillRect(0,132,S,5);
+  g.textAlign='center';
+  g.fillStyle=BR; g.font=F(44,'600');
+  g.fillText('LIGA VILA CARTOBROTHERS', S/2, 66);
+  g.fillStyle='#b9c2b4'; g.font=R(25);
+  g.fillText(`Rodada ${rod} · Temporada ${D.temporada||2026}`, S/2, 106);
 
-  // cartao helper
-  function cartao(y, alt, cor, corTxt, etiqueta, emoji, time, pts, extra){
-    const m=60, w=S-m*2;
-    g.fillStyle='rgba(0,0,0,.18)'; g.fillRect(m+5, y+6, w, alt);
-    g.fillStyle=BR; g.fillRect(m, y, w, alt);
-    g.fillStyle=cor; g.fillRect(m, y, 14, alt);
+  // ---- dois emblemas lado a lado ----
+  const cxE = S*0.27, cxD = S*0.73, topoE = 200, largE = 340, altE = 300;
+  bola(g, cxE, topoE+8,  92, false);
+  bola(g, cxD, topoE+34, 92, true);
+  escudo(g, cxE, topoE+70, largE, altE, '#12a04a', '#0b6431', 'BOLA', 'CHEIA');
+  escudo(g, cxD, topoE+70, largE, altE, '#d4a017', '#a06a0c', 'BOLA', 'MURCHA');
+
+  // ---- zoeira: fogo e caveira grandes, escapando do escudo ----
+  g.save();
+  g.shadowColor='rgba(0,0,0,.5)'; g.shadowBlur=18; g.shadowOffsetY=5;
+  g.font='150px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  g.textAlign='center';
+  g.save(); g.translate(cxE-152, topoE+300); g.rotate(-0.22); g.fillText('🔥',0,0); g.restore();
+  g.save(); g.translate(cxD+152, topoE+300); g.rotate( 0.22); g.fillText('💀',0,0); g.restore();
+  g.restore();
+  g.textAlign='left';
+
+  // ---- placas com os times ----
+  function placa(cx, y, cor, time, pts, cap){
+    const w=430, h=196, x=cx-w/2;
+    g.fillStyle='rgba(0,0,0,.22)'; g.fillRect(x+5,y+6,w,h);
+    g.fillStyle=BR; g.fillRect(x,y,w,h);
+    g.fillStyle=cor; g.fillRect(x,y,w,9);
+    g.textAlign='center';
+    g.fillStyle=ESC; g.font=F(34,'600');
+    g.fillText(cortar(time, F(34,'600'), w-40), cx, y+62);
+    g.fillStyle=cor; g.font=F(74,'600');
+    g.fillText(pts.toFixed(2).replace('.',','), cx, y+140);
+    g.fillStyle='#7a8378'; g.font=R(21);
+    g.fillText(cap ? 'capitão: '+cap : 'sem capitão', cx, y+176);
     g.textAlign='left';
-    g.fillStyle=cor; g.font=F(30,'500');
-    g.fillText(etiqueta, m+42, y+56);
-    g.font=R(52); g.fillText(emoji, w+m-90, y+62);
-    g.fillStyle=ESC; g.font=F(52,'600');
-    g.fillText(cortar(time, F(52,'600'), w-190), m+42, y+120);
-    g.fillStyle=corTxt; g.font=F(76,'600');
-    g.fillText(pts.toFixed(2).replace('.',','), m+42, y+alt-38);
-    g.fillStyle='#7a8378'; g.font=R(24);
-    g.fillText('pontos', m+42+g.measureText(pts.toFixed(2)).width+130, y+alt-42);
-    if(extra){ g.fillStyle='#7a8378'; g.font=R(25); g.textAlign='right';
-               g.fillText(extra, S-m-30, y+alt-42); g.textAlign='left'; }
   }
+  placa(cxE, 615, V,        dd.cheia.time,  dd.cheia.pontos,  dd.cheia.cap);
+  placa(cxD, 615, '#b23b2e',dd.murcha.time, dd.murcha.pontos, dd.murcha.cap);
 
-  cartao(215, 300, V,        V,        'BOLA CHEIA',  '🔥', dd.cheia.time,  dd.cheia.pontos,
-         dd.cheia.cap ? 'capitão: ' + dd.cheia.cap : '');
-  cartao(560, 300, '#b23b2e','#b23b2e','BOLA MURCHA', '💀', dd.murcha.time, dd.murcha.pontos,
-         dd.murcha.cap ? 'capitão: ' + dd.murcha.cap : '');
-
-  // rodape
-  g.fillStyle='rgba(0,0,0,.35)'; g.fillRect(0,S-70,S,70);
-  g.fillStyle='#cfd8cb'; g.font=R(23); g.textAlign='center';
-  g.fillText(`${dd.n} times na disputa · dados oficiais do Cartola FC`, S/2, S-28);
+  // ---- rodape ----
+  g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(0,S-74,S,74);
+  g.textAlign='center'; g.fillStyle='#cfd8cb'; g.font=R(23);
+  g.fillText(`${dd.n} times na disputa · dados oficiais do Cartola FC`, S/2, S-30);
   g.textAlign='left';
 }
 
@@ -753,12 +841,15 @@ function telaCopas(){
               : (f.disputada ? '' : ' <span class="pend">a jogar</span>')}</h4>
       ${f.duelos.map(d=>{
         const pend = (d.aPts==null || d.bPts==null);
-        const lado = (nome,seed,pts,venceu) =>
-          `<div class="lado ${venceu?'v':(pend?'':'x')}">
-             <span class="sd">${seed}º</span>
-             <span class="nm">${esc(nome)}</span>
-             <span class="pt">${pts==null?'—':num(pts)}</span>
-           </div>`;
+        const lado = (nome,seed,pts,venceu) => nome
+          ? `<div class="lado ${venceu?'v':(pend?'':'x')}">
+               <span class="sd">${seed}º</span>
+               <span class="nm">${esc(nome)}</span>
+               <span class="pt">${pts==null?'—':num(pts)}</span>
+             </div>`
+          : `<div class="lado vago">
+               <span class="sd">–</span><span class="nm">a definir</span><span class="pt"></span>
+             </div>`;
         return `<div class="duelo ${pend?'pend':''}">
           ${lado(d.a,d.aSeed,d.aPts,d.venc===d.a)}
           ${lado(d.b,d.bSeed,d.bPts,d.venc===d.b)}

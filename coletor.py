@@ -320,32 +320,39 @@ def montar_copas(times, times_anual, pts, maxrod):
         ordem = [s for s in (SEED16 if comp == "libertadores" else SEED32) if s <= n]
         vivos = [{"seed": s, **mapa[s]} for s in ordem]
         fases = []
+        vagas = len(ordem)          # quantos times a fase comporta
+        # percorre TODAS as fases ate a final: as que ainda nao tem adversario
+        # definido entram como vaga em aberto, para o chaveamento aparecer inteiro
         for nome, rod in FASES[comp]:
-            if len(vivos) < 2:
+            if vagas < 2:
                 break
             duelos, prox = [], []
-            for k in range(0, len(vivos) - 1, 2):
-                a, b = vivos[k], vivos[k + 1]
-                pa = pts[a["id"]].get(rod)
-                pb = pts[b["id"]].get(rod)
-                venc = None
-                if pa is not None and pb is not None:
-                    if pa > pb:
-                        venc = a
-                    elif pb > pa:
-                        venc = b
-                    else:                       # empate: melhor colocado no anual
-                        venc = a if a["seed"] < b["seed"] else b
-                duelos.append({"a": a["time"], "aSeed": a["seed"], "aPts": pa,
-                               "b": b["time"], "bSeed": b["seed"], "bPts": pb,
-                               "venc": venc["time"] if venc else None})
-                if venc:
-                    prox.append(venc)
+            for k in range(0, vagas, 2):
+                a = vivos[k]     if k     < len(vivos) else None
+                b = vivos[k + 1] if k + 1 < len(vivos) else None
+                if a and b:
+                    pa = pts[a["id"]].get(rod)
+                    pb = pts[b["id"]].get(rod)
+                    venc = None
+                    if pa is not None and pb is not None:
+                        if pa > pb:
+                            venc = a
+                        elif pb > pa:
+                            venc = b
+                        else:                   # empate: melhor colocado no anual
+                            venc = a if a["seed"] < b["seed"] else b
+                    duelos.append({"a": a["time"], "aSeed": a["seed"], "aPts": pa,
+                                   "b": b["time"], "bSeed": b["seed"], "bPts": pb,
+                                   "venc": venc["time"] if venc else None})
+                    if venc:
+                        prox.append(venc)
+                else:
+                    duelos.append({"a": None, "aSeed": None, "aPts": None,
+                                   "b": None, "bSeed": None, "bPts": None, "venc": None})
             fases.append({"nome": nome, "rodada": rod, "duelos": duelos,
-                          "disputada": rod <= maxrod})
+                          "disputada": rod <= maxrod and len(prox) == vagas // 2})
             vivos = prox
-            if rod > maxrod:
-                break
+            vagas //= 2
         campeao = None
         if fases and fases[-1]["nome"] == "Final" and fases[-1]["disputada"] and len(vivos) == 1:
             campeao = vivos[0]["time"]
