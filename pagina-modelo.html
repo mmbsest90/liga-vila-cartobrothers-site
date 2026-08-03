@@ -334,8 +334,20 @@ const COMPS = {
   turno2: {rot:'2º Turno',     de:20,ate:38, dica:'Rodadas 20 a 38'},
   capitao:{rot:'Capitão Mito', de:1, ate:38, dica:'Soma dos pontos dos capitães · o capitão vale 1,5×'}
 };
-const ABAS = [['rodada','Rodada'],['anual','Anual'],['turno1','1º Turno'],['turno2','2º Turno'],
-              ['copas','Copas'],['capitao','Capitão Mito'],['mitao','Mitão'],['rico','Mais Rico']];
+function mesEmFoco(){
+  const M = D.mensais || [];
+  if(!M.length) return null;
+  const abertos = M.filter(m=>m.comecou);
+  const andando = abertos.filter(m=>!m.fechado);
+  return andando.length ? andando[andando.length-1]
+       : (abertos.length ? abertos[abertos.length-1] : M[0]);
+}
+function abas(){
+  const m = mesEmFoco();
+  return [['rodada','Rodada'],['anual','Anual'],['turno1','1º Turno'],['turno2','2º Turno'],
+          ['copas','Copas'],['mensal', m ? 'Mensal · '+m.mes : 'Mensais'],
+          ['capitao','Capitão Mito'],['mitao','Mitão'],['rico','Mais Rico']];
+}
 let COPA = 'libertadores';
 
 function situacao(comp){
@@ -361,7 +373,17 @@ const rodadasDe = comp => {
   for(let x=c.de; x<=Math.min(c.ate,D.rodada); x++) r.push(x);
   return r;
 };
-const ocultas = comp => (OCULTAS[comp] = OCULTAS[comp] || new Set());
+// por padrao mostra so as 5 rodadas mais recentes; o usuario liga as outras
+const ULTIMAS_PADRAO = 5;
+function ocultas(comp){
+  if(!OCULTAS[comp]){
+    const s = new Set();
+    const rs = rodadasDe(comp);
+    rs.slice(0, Math.max(0, rs.length - ULTIMAS_PADRAO)).forEach(r => s.add(r));
+    OCULTAS[comp] = s;
+  }
+  return OCULTAS[comp];
+}
 const visiveis = comp => rodadasDe(comp).filter(r => !ocultas(comp).has(r));
 function alterna(comp,r){ const o=ocultas(comp); o.has(r)?o.delete(r):o.add(r); render(); }
 function todas(comp,q){
@@ -774,6 +796,59 @@ function telaRodada(){
   </div>`;
 }
 
+function telaMensal(){
+  const M = D.mensais || [];
+  if(!M.length) return `<div class="card"><h2>Mensais</h2>
+    <div class="vazio">Os meses ainda não foram configurados.</div></div>`;
+
+  const abertos = M.filter(m=>m.comecou);
+  if(window.__mes == null){
+    const emAndamento = abertos.filter(m=>!m.fechado);
+    const alvo = emAndamento.length ? emAndamento[emAndamento.length-1]
+                                    : abertos[abertos.length-1];
+    window.__mes = M.indexOf(alvo);
+  }
+  const m = M[window.__mes] || M[0];
+  const prem = D.premios ? D.premios.mensal : 100;
+
+  const faltam = m.rodadas.filter(r=>!m.jogadas.includes(r));
+  const lider = m.classificacao[0];
+
+  return `
+  ${faixaIndividual('📆 Prêmio de '+m.mes, prem, lider?lider.time:null,
+     lider ? num(lider.pontos)+' pontos'+(m.fechado?' · encerrado':' · parcial') : 'ainda sem rodadas')}
+  <div class="card">
+    <div class="cab"><h2>Mensais</h2>
+      ${m.fechado ? '<span class="selo pronto"><i class="pt"></i>'+esc(m.mes)+' encerrado</span>'
+                  : '<span class="selo parcial"><i class="pt"></i>'+m.jogadas.length+' de '+m.rodadas.length+' rodadas</span>'}
+    </div>
+    <div class="hint">Um prêmio de ${brl(prem)} por mês · vale para os inscritos no anual</div>
+    <div class="painel"><div class="plinha">
+      <span class="rot">Mês</span>
+      ${M.map((x,i)=>`<button class="chip ${i===window.__mes?'on':''} ${x.comecou?'':'acao'}"
+         onclick="window.__mes=${i};render()"
+         title="rodadas ${x.rodadas.join(', ')}">${esc(x.mes)}</button>`).join('')}
+    </div></div>
+    <div class="legenda" style="margin:-4px 0 10px">
+      Rodadas de <b>${esc(m.mes)}</b>: ${m.rodadas.join(', ')}
+      ${faltam.length ? ' · <b>ainda não disputadas:</b> '+faltam.join(', ') : ' · todas disputadas'}
+    </div>
+    ${!m.comecou ? '<div class="vazio">Este mês ainda não começou.</div>' : `
+    ${m.fechado?'':'<div class="aviso">Apuração <b>parcial</b>: faltam '+faltam.length+' rodada(s) para fechar '+esc(m.mes)+'.</div>'}
+    <div class="rolagem"><table><thead><tr>
+      <th class="fix1 pos">#</th><th class="fix2">Time</th><th class="n tot">Pontos</th>
+    </tr></thead><tbody>
+    ${m.classificacao.map(t=>{
+      const podio = t.posicao<=3 ? ' r'+t.posicao : '';
+      return `<tr class="${podio}">
+        <td class="fix1 pos">${t.posicao}</td>
+        <td class="fix2 time">${esc(t.time)}${podio?'<span class="medalha">'+MEDALHA[t.posicao]+'</span>':''}</td>
+        <td class="n tot">${num(t.pontos)}</td></tr>`;
+    }).join('')}
+    </tbody></table></div>`}
+  </div>`;
+}
+
 function telaMitao(){
   const m = (D.mitao||[]).slice().reverse(), rec = D.mitadaAno;
   return `
@@ -951,9 +1026,10 @@ function telaCopas(){
 function render(){
   $('#sub').textContent = `Temporada ${D.temporada||2026} · após a rodada ${D.rodada}`;
   $('#atz').innerHTML = `<span class="bolinha"></span>Atualizado em ${esc(D.atualizado||'—')}`;
-  $('#nav').innerHTML = ABAS.map(([k,t])=>
+  $('#nav').innerHTML = abas().map(([k,t])=>
     `<button class="${k===ABA?'on':''}" onclick="ABA='${k}';BUSCA='';ORDEM=null;render()">${t}</button>`).join('');
   $('#tela').innerHTML = (ABA==='rodada')? telaRodada()
+                       : (ABA==='mensal')? telaMensal()
                        : (ABA==='mitao') ? telaMitao()
                        : (ABA==='copas') ? telaCopas()
                        : (ABA==='rico')  ? telaMaisRico()

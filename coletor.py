@@ -271,6 +271,42 @@ def calc_capitao_mito(times_anual, caps, maxrod):
     return lista
 
 
+def calc_mensais(times_anual, pts, maxrod):
+    """Prêmios mensais. Quais rodadas contam em cada mês vem de dados/meses.csv,
+    porque o agrupamento da liga não segue o calendário à risca.
+    Só valem os inscritos no ANUAL. O mês fica 'parcial' até a última rodada dele
+    ser disputada."""
+    linhas = ler_csv(os.path.join(DADOS, "meses.csv"))
+    if not linhas:
+        return []
+    saida = []
+    for l in linhas:
+        nome = (l.get("mes") or "").strip()
+        brutas = (l.get("rodadas") or "").replace(" ", "")
+        rods = sorted({int(x) for x in brutas.split(",") if x.isdigit()})
+        if not nome or not rods:
+            continue
+        jogadas = [r for r in rods if r <= maxrod]
+        lista = []
+        if jogadas:                       # mês que ainda não começou não tem ranking
+            for t in times_anual:
+                vals = [pts[t["time_id"]][r] for r in jogadas if r in pts[t["time_id"]]]
+                if not vals:
+                    continue
+                lista.append({"time_id": t["time_id"], "time": t["nome_time"],
+                              "pontos": round(sum(vals), 2), "rodadas": len(vals)})
+            lista.sort(key=lambda x: -x["pontos"])
+            for i, x in enumerate(lista, 1):
+                x["posicao"] = i
+        saida.append({
+            "mes": nome, "rodadas": rods, "jogadas": jogadas,
+            "fechado": bool(rods) and max(rods) <= maxrod,
+            "comecou": bool(jogadas),
+            "classificacao": lista,
+        })
+    return saida
+
+
 def calc_mais_rico(times_anual, patr):
     lista = [{"time_id": t["time_id"], "time": t["nome_time"],
               "patrimonio": patr[t["time_id"]]["valor"],
@@ -438,7 +474,7 @@ def texto_whatsapp(maxrod, classif, mitao, capmito, rico):
     return "\n".join(L) + "\n"
 
 
-def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas):
+def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas, mensais):
     modelo = os.path.join(BASE, "pagina-modelo.html")
     if not os.path.exists(modelo):
         log("  aviso: pagina-modelo.html não encontrado — página não gerada")
@@ -472,6 +508,12 @@ def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas)
         "maisRico": [{"posicao": x["posicao"], "time": x["time"], "patrimonio": x["patrimonio"],
                       "id": x["time_id"]} for x in rico],
         "copas": copas,
+        "mensais": [{"mes": m["mes"], "rodadas": m["rodadas"], "jogadas": m["jogadas"],
+                     "fechado": m["fechado"], "comecou": m["comecou"],
+                     "classificacao": [{"posicao": x["posicao"], "time": x["time"],
+                                        "pontos": x["pontos"], "id": x["time_id"]}
+                                       for x in m["classificacao"]]}
+                    for m in mensais],
         "premios": {
             "anual":  [round(PREMIOS["anual"]["pote"] * p, 2) for p in PREMIOS["anual"]["pc"]],
             "turno1": [round(PREMIOS["turno1"]["pote"] * p, 2) for p in PREMIOS["turno1"]["pc"]],
@@ -579,13 +621,24 @@ def main():
     mitao = calc_mitao(times_anual, pts, maxrod)
     capmito = calc_capitao_mito(times_anual, caps, maxrod)
     rico = calc_mais_rico(times_anual, patr)
+    mensais = calc_mensais(times_anual, pts, maxrod)
     copas = montar_copas(times, times_anual, pts, maxrod)
 
     gravar_saidas(times, pts, caps, maxrod, classif, mitao, capmito, rico)
+    if mensais:
+        linhas_m = []
+        for m in mensais:
+            for x in m["classificacao"]:
+                linhas_m.append({"mes": m["mes"], "posicao": x["posicao"], "time": x["time"],
+                                 "pontos": br(x["pontos"]), "rodadas": x["rodadas"],
+                                 "situacao": "fechado" if m["fechado"] else "parcial",
+                                 "time_id": x["time_id"]})
+        gravar_csv(os.path.join(SAIDA, "mensais.csv"), linhas_m,
+                   ["mes", "posicao", "time", "pontos", "rodadas", "situacao", "time_id"])
     with open(os.path.join(SAIDA, "resumo-whatsapp.txt"), "w", encoding="utf-8") as f:
         f.write(texto_whatsapp(maxrod, classif, mitao, capmito, rico))
 
-    ok = gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas)
+    ok = gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas, mensais)
 
     log("")
     log("  " + "-" * 50)
@@ -597,6 +650,12 @@ def main():
         log(f"  Capitão Mito: {capmito[0]['time']} ({capmito[0]['pontos']:.2f})")
     if rico:
         log(f"  Mais Rico...: {rico[0]['time']} (C$ {rico[0]['patrimonio']:.2f})")
+    if mensais:
+        atual = [m for m in mensais if m["comecou"] and not m["fechado"]]
+        if atual and atual[-1]["classificacao"]:
+            m = atual[-1]
+            log(f"  Mensal {m['mes']} (parcial): {m['classificacao'][0]['time']} "
+                f"({m['classificacao'][0]['pontos']:.2f})")
     if copas:
         for comp in ("libertadores", "sulamericana"):
             if comp in copas:
