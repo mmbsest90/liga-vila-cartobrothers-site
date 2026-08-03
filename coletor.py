@@ -69,6 +69,10 @@ RODADA_RECOPA = 25
 
 CAPITAO_MULT = 1.5    # no Cartola o capitão vale 1,5x, não 2x
 
+# posições do Cartola e quantos entram na escalação mais popular (4-3-3)
+POSICOES = {1: "GOL", 2: "LAT", 3: "ZAG", 4: "MEI", 5: "ATA", 6: "TEC"}
+FORMACAO = [(1, 1), (2, 2), (3, 2), (4, 3), (5, 3), (6, 1)]
+
 TURNOS = {"anual": (1, 38), "turno1": (1, 19), "turno2": (20, 38)}
 
 FUSO = timezone(timedelta(hours=-3))
@@ -160,7 +164,7 @@ def carregar_times():
 
 # --------------------------------------------------------------------- coleta
 
-def carregar_cache(times):
+def carregar_cache(times, escal):
     """Lê o que já foi coletado, para não pedir de novo à API."""
     pts = {t["time_id"]: {} for t in times}
     caps = {t["time_id"]: {} for t in times}
@@ -173,6 +177,16 @@ def carregar_cache(times):
                 val = de_br(v)
                 if val is not None:
                     pts[tid][int(k[1:])] = val
+    for r in ler_csv(os.path.join(SAIDA, "escalados.csv")):
+        try:
+            rod = int(r["rodada"]); aid = int(r["atleta_id"])
+        except (KeyError, ValueError, TypeError):
+            continue
+        escal.setdefault(rod, {})[aid] = {
+            "apelido": r.get("apelido", ""), "posicao": r.get("posicao", "?"),
+            "clube": r.get("clube", ""), "pontos": de_br(r.get("pontos")),
+            "n": int(r.get("escalacoes") or 0),
+        }
     for r in ler_csv(os.path.join(SAIDA, "capitaes.csv")):
         tid = r.get("time_id")
         if tid not in caps:
@@ -184,11 +198,13 @@ def carregar_cache(times):
     return pts, caps
 
 
-def coletar(times, pts, caps, patr, rodadas):
+def coletar(times, pts, caps, patr, rodadas, escal=None, clubes=None):
     total = len(rodadas) * len(times)
     feito = falhas = 0
     for rod in rodadas:
         ok = 0
+        if escal is not None:
+            escal[rod] = {}          # recontagem limpa desta rodada
         for t in times:
             feito += 1
             d = buscar(f"/time/id/{t['time_id']}/{rod}")
@@ -210,6 +226,23 @@ def coletar(times, pts, caps, patr, rodadas):
                     pv = d.get("patrimonio")
                 if pv is not None:
                     patr[t["time_id"]] = {"valor": n2(pv), "rodada": rod}
+                # escalação: conta quantas vezes cada atleta foi escalado (só o anual)
+                if escal is not None and t["anual"]:
+                    alvo = escal.setdefault(rod, {})
+                    for a in d.get("atletas", []):
+                        aid = a.get("atleta_id")
+                        if not aid:
+                            continue
+                        e = alvo.setdefault(aid, {
+                            "apelido": a.get("apelido", ""),
+                            "posicao": POSICOES.get(a.get("posicao_id"), "?"),
+                            "clube": (clubes or {}).get(str(a.get("clube_id")), ""),
+                            "pontos": n2(a.get("pontos_num")),
+                            "n": 0,
+                        })
+                        e["n"] += 1
+                        if e["pontos"] is None:
+                            e["pontos"] = n2(a.get("pontos_num"))
             else:
                 falhas += 1
             time.sleep(PAUSA)
@@ -269,6 +302,26 @@ def calc_capitao_mito(times_anual, caps, maxrod):
     for i, x in enumerate(lista, 1):
         x["posicao"] = i
     return lista
+
+
+def montar_escalacao(escal, total_times):
+    """Para cada rodada, monta o time mais escalado seguindo a FORMACAO."""
+    saida = {}
+    for rod, atletas in escal.items():
+        porpos = {}
+        for a in atletas.values():
+            porpos.setdefault(a["posicao"], []).append(a)
+        time = []
+        for pid, quantos in FORMACAO:
+            pos = POSICOES[pid]
+            cand = sorted(porpos.get(pos, []), key=lambda x: (-x["n"], -(x["pontos"] or -99)))
+            for a in cand[:quantos]:
+                time.append({"apelido": a["apelido"], "posicao": pos, "clube": a["clube"],
+                             "n": a["n"], "pontos": a["pontos"],
+                             "pct": round(100 * a["n"] / total_times) if total_times else 0})
+        if time:
+            saida[str(rod)] = time
+    return saida
 
 
 def calc_mensais(times_anual, pts, maxrod):
@@ -474,7 +527,8 @@ def texto_whatsapp(maxrod, classif, mitao, capmito, rico):
     return "\n".join(L) + "\n"
 
 
-def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas, mensais):
+def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico,
+                 copas, mensais, escalacao=None, total_anual=0):
     modelo = os.path.join(BASE, "pagina-modelo.html")
     if not os.path.exists(modelo):
         log("  aviso: pagina-modelo.html não encontrado — página não gerada")
@@ -508,6 +562,8 @@ def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas,
         "maisRico": [{"posicao": x["posicao"], "time": x["time"], "patrimonio": x["patrimonio"],
                       "id": x["time_id"]} for x in rico],
         "copas": copas,
+        "escalacao": escalacao or {},
+        "totalAnual": total_anual,
         "mensais": [{"mes": m["mes"], "rodadas": m["rodadas"], "jogadas": m["jogadas"],
                      "fechado": m["fechado"], "comecou": m["comecou"],
                      "classificacao": [{"posicao": x["posicao"], "time": x["time"],
@@ -600,8 +656,9 @@ def main():
         log("  Nenhuma rodada disputada ainda.")
         return
 
+    escal = {}
     pts, caps = ({t["time_id"]: {} for t in times}, {t["time_id"]: {} for t in times}) \
-        if forcar else carregar_cache(times)
+        if forcar else carregar_cache(times, escal)
     patr = {}
 
     faltando = [r for r in range(1, maxrod + 1)
@@ -612,7 +669,12 @@ def main():
     else:
         log(f"  A coletar.......: rodada(s) {', '.join(map(str, faltando))}")
         log("")
-        feito, falhas = coletar(times, pts, caps, patr, faltando)
+        clubes = {}
+        dc = buscar("/clubes")
+        if isinstance(dc, dict):
+            for cid, c in dc.items():
+                clubes[str(cid)] = (c.get("abreviacao") or c.get("nome") or "").strip()
+        feito, falhas = coletar(times, pts, caps, patr, faltando, escal, clubes)
         if falhas:
             log(f"  Consultas sem resposta: {falhas}")
 
@@ -635,10 +697,22 @@ def main():
                                  "time_id": x["time_id"]})
         gravar_csv(os.path.join(SAIDA, "mensais.csv"), linhas_m,
                    ["mes", "posicao", "time", "pontos", "rodadas", "situacao", "time_id"])
+    if escal:
+        linhas_e = []
+        for rod in sorted(escal):
+            for aid, a in sorted(escal[rod].items(), key=lambda kv: -kv[1]["n"]):
+                linhas_e.append({"rodada": rod, "atleta_id": aid, "apelido": a["apelido"],
+                                 "posicao": a["posicao"], "clube": a["clube"],
+                                 "escalacoes": a["n"], "pontos": br(a["pontos"])})
+        gravar_csv(os.path.join(SAIDA, "escalados.csv"), linhas_e,
+                   ["rodada", "atleta_id", "apelido", "posicao", "clube", "escalacoes", "pontos"])
+
     with open(os.path.join(SAIDA, "resumo-whatsapp.txt"), "w", encoding="utf-8") as f:
         f.write(texto_whatsapp(maxrod, classif, mitao, capmito, rico))
 
-    ok = gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico, copas, mensais)
+    escalacao = montar_escalacao(escal, len(times_anual))
+    ok = gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico,
+                      copas, mensais, escalacao, len(times_anual))
 
     log("")
     log("  " + "-" * 50)

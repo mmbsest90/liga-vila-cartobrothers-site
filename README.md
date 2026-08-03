@@ -21,6 +21,7 @@ Também dá para atualizar na hora: aba **Actions** → **Atualizar classificaç
 |---|---|
 | Anual | soma das 38 rodadas |
 | 1º e 2º Turno | rodadas 1–19 e 20–38, com listas de inscritos próprias |
+| Time mais escalado | jogador mais escolhido em cada posição, entre os inscritos no anual |
 | Mitada do Ano | maior pontuação em rodada única, só entre inscritos no anual |
 | Capitão Mito | soma dos pontos dos capitães (o capitão vale 1,5×) |
 | Mais Rico | maior patrimônio em cartoletas |
