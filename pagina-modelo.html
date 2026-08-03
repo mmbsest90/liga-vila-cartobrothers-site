@@ -567,8 +567,8 @@ function destaquesRodada(rod){
   return { cheia: lista[0], murcha: lista[lista.length-1], n: lista.length, top: lista };
 }
 
-/* selo/emblema com o titulo em duas linhas, sem bola */
-function selo(g, cx, cy, larg, alt, c1, c2, borda, l1, l2){
+/* emblema da arte, em duas linhas (nome diferente de selo(), que e das abas) */
+function emblema(g, cx, cy, larg, alt, c1, c2, borda, l1, l2){
   const m=larg/2, t=cy-alt/2;
   g.save();
   g.beginPath();
@@ -594,8 +594,8 @@ function selo(g, cx, cy, larg, alt, c1, c2, borda, l1, l2){
     g.fillStyle='rgba(0,0,0,.45)'; g.fillText(txt,cx+4,y+4);
     g.fillStyle='#ffffff';         g.fillText(txt,cx,y);
   };
-  sombra(l1, t+alt*0.36, 52);
-  sombra(l2, t+alt*0.68, 92);
+  sombra(l1, t+alt*0.30, 44);
+  sombra(l2, t+alt*0.78, 86);
   g.textAlign='left';
 }
 
@@ -632,8 +632,8 @@ function desenharArte(rod){
   const cxE=S*0.265, cxD=S*0.735;
 
   // emblemas
-  selo(g, cxE, 300, 400, 210, '#ff8330','#d1520c','#7a2f05', 'BOLA','CHEIA');
-  selo(g, cxD, 300, 400, 210, '#43607f','#16324f','#08192b', 'BOLA','MURCHA');
+  emblema(g, cxE, 305, 410, 232, '#ff8330','#d1520c','#7a2f05', 'BOLA','CHEIA');
+  emblema(g, cxD, 305, 410, 232, '#43607f','#16324f','#08192b', 'BOLA','MURCHA');
 
   // emojis grandes
   g.save(); g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=20; g.shadowOffsetY=6;
@@ -664,14 +664,19 @@ function desenharArte(rod){
   // listas: 5 melhores e 5 piores
   function lista(cx, y, titulo, cor, itens, posDe){
     const w=452, x=cx-w/2;
-    g.textAlign='center'; g.fillStyle='rgba(255,255,255,.92)'; g.font=F(30,'600');
+    // painel solido: sobre o listrado o texto ficava dificil de ler
+    const alt = 52 + itens.length*62;
+    g.fillStyle='rgba(0,0,0,.30)'; g.fillRect(x+5, y-38+5, w, alt);
+    g.fillStyle='#0a1c30';         g.fillRect(x,   y-38,   w, alt);
+    g.fillStyle=cor;               g.fillRect(x,   y-38,   w, 5);
+    g.textAlign='center'; g.fillStyle='#ffffff'; g.font=F(30,'600');
     g.fillText(titulo, cx, y);
     itens.forEach((t,i)=>{
       const yy=y+42+i*62;
-      g.fillStyle= i%2 ? 'rgba(255,255,255,.13)' : 'rgba(255,255,255,.20)';
+      g.fillStyle= i%2 ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.12)';
       g.fillRect(x, yy-34, w, 54);
       g.fillStyle=cor; g.fillRect(x, yy-34, 7, 54);
-      g.textAlign='left'; g.fillStyle='rgba(255,255,255,.75)'; g.font=F(28,'600');
+      g.textAlign='left'; g.fillStyle=cor; g.font=F(28,'600');
       g.fillText(posDe(i)+'º', x+20, yy+4);
       g.fillStyle=BR; g.font=R(27,500);
       g.fillText(cortar(t.time,R(27,500),w-190), x+72, yy+4);
@@ -682,9 +687,9 @@ function desenharArte(rod){
   }
   const todos=dd.top||[];
   const melhores=todos.slice(0,5);
-  const piores=todos.slice(-5).reverse();
-  lista(cxE, 712, 'TOP 5 DA RODADA',      '#ff9d52', melhores, i => i+1);
-  lista(cxD, 712, 'PELOTÃO DA VERGONHA',   '#9db3c9', piores,   i => todos.length - i);
+  const piores=todos.slice(-5);   // ordem crescente: o 50o fica por ultimo
+  lista(cxE, 742, 'TOP 5 DA RODADA',      '#ff9d52', melhores, i => i+1);
+  lista(cxD, 742, 'PELOTÃO DA VERGONHA',   '#9db3c9', piores,   i => todos.length - 4 + i);
 
   // rodape
   g.fillStyle='rgba(0,0,0,.5)'; g.fillRect(0,H-80,S,80);
