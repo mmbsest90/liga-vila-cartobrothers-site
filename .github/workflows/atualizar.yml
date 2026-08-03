@@ -1,0 +1,63 @@
+name: Atualizar classificacao
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+    inputs:
+      forcar:
+        description: "Recoletar todas as rodadas do zero"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: atualizar-liga
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Coletar e gerar a pagina
+        run: |
+          if [ "${{ inputs.forcar }}" = "true" ]; then
+            python3 coletor.py --forcar
+          else
+            python3 coletor.py
+          fi
+
+      - name: Guardar os dados coletados
+        run: |
+          git config user.name  "Liga Vila Cartobrothers"
+          git config user.email "acoes@users.noreply.github.com"
+          git add saida site
+          if git diff --cached --quiet; then
+            echo "Nada mudou nesta execucao."
+          else
+            git commit -m "Atualiza classificacao"
+            git push
+          fi
+
+      - name: Preparar a publicacao
+        uses: actions/configure-pages@v5
+
+      - name: Empacotar a pagina
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Publicar no GitHub Pages
+        uses: actions/deploy-pages@v4
