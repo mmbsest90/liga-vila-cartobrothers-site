@@ -259,8 +259,13 @@
   @media print{
     nav,.painel,.btbaixar,.rodapenao,.acoes{display:none!important}
     .app{max-width:100%;padding:0}
-    .card{box-shadow:none;break-inside:avoid;border-color:#ccc}
-    .rolagem{overflow:visible!important;border:0}
+    /* o cartao NAO pode evitar quebra: com 50 linhas ele nao cabe numa folha
+       e o navegador empurrava tudo para a pagina 2, deixando a 1a em branco */
+    .card{box-shadow:none;break-inside:auto;border-color:#ccc}
+    tr{break-inside:avoid}
+    thead{display:table-header-group}      /* repete o cabecalho a cada folha */
+    th{position:static!important}
+    .rolagem{overflow:visible!important;border:0;max-height:none!important}
     table{font-size:10px} th,td{padding:3px 4px}
     .fix1,.fix2{position:static!important}
     .prem,.capa{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -532,7 +537,7 @@ function destaquesRodada(rod){
     }
   });
   lista.sort((a,b) => b.pontos - a.pontos);
-  return { cheia: lista[0], murcha: lista[lista.length-1], n: lista.length };
+  return { cheia: lista[0], murcha: lista[lista.length-1], n: lista.length, top: lista };
 }
 
 /* bola de futebol: cheia (redonda) ou murcha (achatada e amassada) */
@@ -607,12 +612,19 @@ function escudo(g, cx, topo, larg, alt, cor1, cor2, titulo, sub){
   g.textAlign='left';
 }
 
+const FORMATOS = {
+  quadrado: {w:1080, h:1080, rot:'Quadrado', sub:'1080×1080 · WhatsApp e feed'},
+  retrato:  {w:1080, h:1350, rot:'Retrato',  sub:'1080×1350 · feed do Instagram'},
+  story:    {w:1080, h:1920, rot:'Story',    sub:'1080×1920 · status e stories'}
+};
+
 function desenharArte(rod){
   const c = document.getElementById('cv');
   if(!c) return;
   const g = c.getContext('2d');
-  const S = 1080;
-  c.width = S; c.height = S;
+  const fmt = FORMATOS[window.__fmt || 'quadrado'];
+  const S = fmt.w, H = fmt.h;
+  c.width = S; c.height = H;
   const dd = destaquesRodada(rod);
   if(!dd.cheia) return;
 
@@ -624,25 +636,32 @@ function desenharArte(rod){
     return s===txt?txt:s.trim()+'…'; };
 
   // ---- fundo: gramado listrado + vinheta ----
-  g.fillStyle=V2; g.fillRect(0,0,S,S);
-  g.fillStyle=V; for(let x=0;x<S;x+=170) g.fillRect(x,0,85,S);
+  g.fillStyle=V2; g.fillRect(0,0,S,H);
+  g.fillStyle=V; for(let x=0;x<S;x+=170) g.fillRect(x,0,85,H);
   g.strokeStyle='rgba(255,255,255,.10)'; g.lineWidth=7;
-  g.beginPath(); g.arc(S/2,S/2,320,0,Math.PI*2); g.stroke();
-  const vin=g.createRadialGradient(S/2,S/2,S*0.3,S/2,S/2,S*0.78);
+  g.beginPath(); g.arc(S/2,H/2,Math.min(S,H)*0.3,0,Math.PI*2); g.stroke();
+  const vin=g.createRadialGradient(S/2,H/2,Math.min(S,H)*0.3,S/2,H/2,Math.max(S,H)*0.72);
   vin.addColorStop(0,'rgba(0,0,0,0)'); vin.addColorStop(1,'rgba(0,0,0,.45)');
-  g.fillStyle=vin; g.fillRect(0,0,S,S);
+  g.fillStyle=vin; g.fillRect(0,0,S,H);
 
   // ---- topo ----
-  g.fillStyle=ESC; g.fillRect(0,0,S,132);
-  g.fillStyle=OURO; g.fillRect(0,132,S,5);
+  const hTopo = 132;
+  g.fillStyle=ESC; g.fillRect(0,0,S,hTopo);
+  g.fillStyle=OURO; g.fillRect(0,hTopo,S,5);
   g.textAlign='center';
   g.fillStyle=BR; g.font=F(44,'600');
   g.fillText('LIGA VILA CARTOBROTHERS', S/2, 66);
   g.fillStyle='#b9c2b4'; g.font=R(25);
   g.fillText(`Rodada ${rod} · Temporada ${D.temporada||2026}`, S/2, 106);
 
+  // area util entre o topo e o rodape, distribuida conforme o formato
+  const hRod = 74;
+  const util = H - hTopo - hRod;
+  const topoE = hTopo + util*0.06;
+  const yPlaca = topoE + 415 + util*0.10;
+
   // ---- dois emblemas lado a lado ----
-  const cxE = S*0.27, cxD = S*0.73, topoE = 200, largE = 340, altE = 300;
+  const cxE = S*0.27, cxD = S*0.73, largE = 340, altE = 300;
   bola(g, cxE, topoE+8,  92, false);
   bola(g, cxD, topoE+34, 92, true);
   escudo(g, cxE, topoE+70, largE, altE, '#12a04a', '#0b6431', 'BOLA', 'CHEIA');
@@ -673,20 +692,39 @@ function desenharArte(rod){
     g.fillText(cap ? 'capitão: '+cap : 'sem capitão', cx, y+176);
     g.textAlign='left';
   }
-  placa(cxE, 615, V,        dd.cheia.time,  dd.cheia.pontos,  dd.cheia.cap);
-  placa(cxD, 615, '#b23b2e',dd.murcha.time, dd.murcha.pontos, dd.murcha.cap);
+  placa(cxE, yPlaca, V,        dd.cheia.time,  dd.cheia.pontos,  dd.cheia.cap);
+  placa(cxD, yPlaca, '#b23b2e',dd.murcha.time, dd.murcha.pontos, dd.murcha.cap);
+
+  // ---- nos formatos altos, sobra espaco: mostra o topo da rodada ----
+  if(H > 1200 && dd.top && dd.top.length){
+    const yT = yPlaca + 240;
+    g.textAlign='center'; g.fillStyle='rgba(255,255,255,.85)'; g.font=F(30,'500');
+    g.fillText('TOP 5 DA RODADA', S/2, yT);
+    g.font=R(30); g.textAlign='left';
+    dd.top.slice(0,5).forEach((t,i)=>{
+      const y = yT + 56 + i*52;
+      g.fillStyle='rgba(255,255,255,.20)'; g.fillRect(S*0.12, y-34, S*0.76, 44);
+      g.fillStyle='#ffffff'; g.font=F(28,'500');
+      g.fillText(`${i+1}º`, S*0.14, y);
+      g.font=R(27);
+      g.fillText(cortar(t.time, R(27), S*0.48), S*0.20, y);
+      g.textAlign='right'; g.font=F(29,'600');
+      g.fillText(t.pontos.toFixed(2).replace('.',','), S*0.86, y);
+      g.textAlign='left';
+    });
+  }
 
   // ---- rodape ----
-  g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(0,S-74,S,74);
+  g.fillStyle='rgba(0,0,0,.45)'; g.fillRect(0,H-hRod,S,hRod);
   g.textAlign='center'; g.fillStyle='#cfd8cb'; g.font=R(23);
-  g.fillText(`${dd.n} times na disputa · dados oficiais do Cartola FC`, S/2, S-30);
+  g.fillText(`${dd.n} times na disputa · dados oficiais do Cartola FC`, S/2, H-30);
   g.textAlign='left';
 }
 
 function baixarArte(rod){
   const c = document.getElementById('cv');
   const a = document.createElement('a');
-  a.download = `liga-vila-cartobrothers-rodada-${rod}.png`;
+  a.download = `liga-rodada-${rod}-${window.__fmt||'quadrado'}.png`;
   a.href = c.toDataURL('image/png');
   a.click();
 }
@@ -704,11 +742,19 @@ function telaRodada(){
   return `<div class="card">
     <div class="cab"><h2>Bola cheia e bola murcha</h2></div>
     <div class="hint">Arte pronta para mandar no grupo · entre os ${dd.n} inscritos no anual</div>
-    <div class="painel"><div class="plinha">
-      <span class="rot">Rodada</span>
-      ${rods.map(r=>`<button class="chip ${r===rod?'on':''}"
-         onclick="window.__rodArte=${r};render()">${r}</button>`).join('')}
-    </div></div>
+    <div class="painel">
+      <div class="plinha">
+        <span class="rot">Formato</span>
+        ${Object.entries(FORMATOS).map(([k,f])=>`<button class="chip ${(window.__fmt||'quadrado')===k?'on':''}"
+           onclick="window.__fmt='${k}';render()" title="${f.sub}">${f.rot}</button>`).join('')}
+        <span class="legenda" style="margin:0">${FORMATOS[window.__fmt||'quadrado'].sub}</span>
+      </div>
+      <div class="plinha">
+        <span class="rot">Rodada</span>
+        ${rods.map(r=>`<button class="chip ${r===rod?'on':''}"
+           onclick="window.__rodArte=${r};render()">${r}</button>`).join('')}
+      </div>
+    </div>
     <div class="arte">
       <canvas id="cv" width="1080" height="1080"></canvas>
       <div class="artelado">
@@ -721,8 +767,8 @@ function telaRodada(){
             <div class="pt">${num(dd.murcha.pontos)} pontos${dd.murcha.cap?' · capitão '+esc(dd.murcha.cap):''}</div></div>
         </div>
         <button class="btbaixar" onclick="baixarArte(${rod})">⬇ Baixar imagem</button>
-        <div class="legenda">A imagem sai em 1080×1080, tamanho certo para o WhatsApp.
-          Escolha a rodada acima para gerar a arte de qualquer uma.</div>
+        <div class="legenda">Escolha o formato e a rodada acima. A arte é gerada na hora,
+          em alta resolução, pronta para postar.</div>
       </div>
     </div>
   </div>`;
