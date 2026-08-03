@@ -4,19 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Liga Vila Cartobrothers</title>
-<meta name="theme-color" content="#0f7b3f">
+<meta name="theme-color" content="#0e2a47">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#f4f6f2; --card:#fff; --card2:#f8faf6; --line:#e2e7dd;
-    --txt:#14180f; --dim:#6b7566;
-    --green:#0f7b3f; --green2:#128a46; --greenL:#e8f4ec;
-    --gold:#c8901a; --goldL:#fdf5e3; --red:#b23b2e;
-    --ouro:#c8901a;   --ouroBg:#fdf7e8;
-    --prata:#8c948a;  --prataBg:#f4f6f3;
-    --bronze:#b0713a; --bronzeBg:#fbf2e9;
+    /* laranja do Cartola + azul-marinho no lugar do preto */
+    --bg:#eef2f7; --card:#fff; --card2:#f6f9fc; --line:#d9e2ec;
+    --txt:#0e2138; --dim:#5b7288;
+    --azul:#0e2a47; --azul2:#17436e;
+    --green:#ef6414; --green2:#ff8330; --greenL:#fff0e5;   /* "green" = laranja */
+    --gold:#e0a52e; --goldL:#fff6e4; --red:#d13b2e;
+    --ouro:#dfa22b;   --ouroBg:#fff6e2;
+    --prata:#8e9bab;  --prataBg:#f1f4f8;
+    --bronze:#c2793f; --bronzeBg:#fdf1e6;
     --f-tit:'Oswald',Impact,'Arial Narrow',sans-serif;
     --f-txt:'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     --shadow:0 1px 2px rgba(20,24,15,.05),0 1px 8px rgba(20,24,15,.04);
@@ -26,14 +28,15 @@
        line-height:1.5;font-size:15px;-webkit-text-size-adjust:100%}
   .app{max-width:1200px;margin:0 auto;padding:14px 14px 40px}
 
-  header{display:flex;align-items:center;gap:12px;padding:10px 0 14px}
+  header{display:flex;align-items:center;gap:13px;padding:14px 16px;margin-bottom:12px;
+          background:linear-gradient(100deg,var(--azul),var(--azul2));border-radius:12px;color:#fff}
   .ttl{font-family:var(--f-tit);font-size:22px;font-weight:600;line-height:1.05;
        letter-spacing:.02em;text-transform:uppercase}
-  .sub{color:var(--dim);font-size:12px;margin-top:2px}
+  .sub{color:#a9bed4;font-size:12px;margin-top:2px}
   .atz{display:inline-flex;align-items:center;gap:6px;margin-top:5px;padding:3px 10px;border-radius:20px;
-       background:var(--greenL);border:1px solid #b6dcc4;color:var(--green);
+       background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;
        font-size:11.5px;font-weight:600}
-  .atz .bolinha{width:6px;height:6px;border-radius:50%;background:var(--green);flex:none;
+  .atz .bolinha{width:6px;height:6px;border-radius:50%;background:var(--green2);flex:none;
                 animation:pulsa 2.4s ease-in-out infinite}
   @keyframes pulsa{0%,100%{opacity:1}50%{opacity:.35}}
 
@@ -106,7 +109,7 @@
   .corte td{border-top:2px dashed #d8c99a;padding-top:10px}
 
   .destaque{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-bottom:12px}
-  .dcard{background:var(--goldL);border:1.5px solid #e8c979;border-radius:10px;padding:13px 15px}
+  .dcard{background:var(--goldL);border:1.5px solid #edc36a;border-radius:10px;padding:13px 15px}
   .dcard .lab{font-family:var(--f-tit);font-size:11px;color:var(--gold);text-transform:uppercase;
               letter-spacing:.06em;font-weight:500}
   .dcard .nm{font-family:var(--f-tit);font-weight:600;margin-top:3px;font-size:17px;letter-spacing:.01em}
@@ -131,8 +134,8 @@
          font-size:12px;color:#8a6410;margin-bottom:11px}
   /* ---- chaveamento ---- */
   .capa{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:11px;margin-bottom:12px;
-        background:linear-gradient(105deg,#0f7b3f,#128a46 55%,#15a052);color:#fff}
-  .capa.sula{background:linear-gradient(105deg,#8a5a12,#b0771f 55%,#c8901a)}
+        background:linear-gradient(105deg,#0e2a47,#17436e 55%,#1f5c88);color:#fff}
+  .capa.sula{background:linear-gradient(105deg,#c2500e,#ef6414 55%,#ff8330)}
   .capa .tr{flex:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
   .capa .info{flex:1}
   .capa .nome{font-family:var(--f-tit);font-size:21px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;line-height:1.1}
@@ -185,9 +188,9 @@
 
   /* ---- faixa de premiacao ---- */
   .prem{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:12px;margin-bottom:12px;
-        background:linear-gradient(115deg,#4a2378 0%,#63309b 45%,#7b3fbd 100%);color:#fff;flex-wrap:wrap;
-        box-shadow:0 2px 10px rgba(74,35,120,.18)}
-  .prem.ind{background:linear-gradient(115deg,#3d1f66 0%,#5a2c8f 55%,#6f39ab 100%)}
+        background:linear-gradient(115deg,#0e2a47 0%,#17436e 55%,#1f5c88 100%);color:#fff;flex-wrap:wrap;
+        box-shadow:0 3px 12px rgba(14,42,71,.22)}
+  .prem.ind{background:linear-gradient(115deg,#c2500e 0%,#ef6414 55%,#ff8330 100%)}
   .prem .tt{font-family:var(--f-tit);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
   .prem .lugares{display:flex;gap:9px;flex-wrap:wrap;flex:1}
 
@@ -212,8 +215,8 @@
   .subabas button{background:var(--card);border:1px solid var(--line);color:var(--dim);border-radius:7px;
     padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
   .subabas button.on{background:var(--green);border-color:var(--green);color:#fff}
-  .recopa{background:linear-gradient(105deg,#12100e,#2a2620);color:#fff;border-radius:11px;padding:16px}
-  .recopa.aguardando{background:linear-gradient(105deg,#2e2b26,#403c34)}
+  .recopa{background:linear-gradient(105deg,#0a1c30,#14314f);color:#fff;border-radius:11px;padding:16px}
+  .recopa.aguardando{background:linear-gradient(105deg,#2b3a4a,#3d4e60)}
   .recopa .nome{font-family:var(--f-tit);font-size:18px;letter-spacing:.03em;text-transform:uppercase}
   .recopa .meta{font-size:12px;opacity:.85;margin-top:2px}
   .recopa .dupla{display:flex;gap:10px;align-items:center;margin-top:13px;flex-wrap:wrap}
@@ -250,7 +253,9 @@
          padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
   .btpdf:hover{background:var(--greenL);border-color:var(--green)}
   .espaco{flex:1}
-  header .btpdf{align-self:flex-start;margin-top:4px}
+  header .btpdf{align-self:flex-start;margin-top:4px;background:rgba(255,255,255,.14);
+                color:#fff;border-color:rgba(255,255,255,.3)}
+  header .btpdf:hover{background:rgba(255,255,255,.26)}
   /* vaga ainda nao definida no chaveamento */
   .duelo .lado.vago{color:var(--dim);font-style:italic;opacity:.7}
   .acoes .dica{font-size:11.5px;color:var(--dim);flex:1;min-width:180px}
@@ -283,15 +288,15 @@
       <path d="M46 3 L86 15 V52 C86 76 68 92 46 101 C24 92 6 76 6 52 V15 Z" fill="#12100e"/>
       <clipPath id="cs"><path d="M46 9 L80 19 V52 C80 72 65 86 46 94 C27 86 12 72 12 52 V19 Z"/></clipPath>
       <g clip-path="url(#cs)">
-        <rect x="0" y="0" width="92" height="104" fill="#128a46"/>
-        <rect x="12" y="0" width="12" height="104" fill="#0f7b3f"/>
-        <rect x="36" y="0" width="12" height="104" fill="#0f7b3f"/>
-        <rect x="60" y="0" width="12" height="104" fill="#0f7b3f"/>
+        <rect x="0" y="0" width="92" height="104" fill="#17436e"/>
+        <rect x="12" y="0" width="12" height="104" fill="#0e2a47"/>
+        <rect x="36" y="0" width="12" height="104" fill="#0e2a47"/>
+        <rect x="60" y="0" width="12" height="104" fill="#0e2a47"/>
         <rect x="0" y="60" width="92" height="3" fill="rgba(255,255,255,.5)"/>
         <circle cx="46" cy="60" r="11" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="3"/>
       </g>
       <rect x="31" y="28" width="30" height="22" rx="2" fill="#12100e"/>
-      <rect x="31" y="42" width="30" height="6.5" fill="#c8901a"/>
+      <rect x="31" y="42" width="30" height="6.5" fill="#ef6414"/>
       <ellipse cx="46" cy="52" rx="23" ry="4.5" fill="#12100e"/>
     </svg>
     <div>
@@ -601,7 +606,7 @@ function desenharArte(rod){
   c.width=S; c.height=H;
   const dd=destaquesRodada(rod); if(!dd.cheia) return;
 
-  const V='#0f7b3f', V2='#128a46', OURO='#c8901a', ESC='#12100e', BR='#ffffff', VERM='#b23b2e';
+  const V='#ef6414', V2='#17436e', OURO='#e0a52e', ESC='#0a1c30', BR='#ffffff', VERM='#d13b2e';
   const F=(p,w)=>`${w} ${p}px Oswald, Impact, sans-serif`;
   const R=(t,w)=>`${w||400} ${t}px Roboto, Arial, sans-serif`;
   const cortar=(txt,fonte,max)=>{ g.font=fonte; let s=txt;
@@ -627,8 +632,8 @@ function desenharArte(rod){
   const cxE=S*0.265, cxD=S*0.735;
 
   // emblemas
-  selo(g, cxE, 300, 400, 210, '#16b355','#0a5c2c','#064a23', 'BOLA','CHEIA');
-  selo(g, cxD, 300, 400, 210, '#e0a11c','#8a5a0c','#3a2607', 'BOLA','MURCHA');
+  selo(g, cxE, 300, 400, 210, '#ff8330','#d1520c','#7a2f05', 'BOLA','CHEIA');
+  selo(g, cxD, 300, 400, 210, '#43607f','#16324f','#08192b', 'BOLA','MURCHA');
 
   // emojis grandes
   g.save(); g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=20; g.shadowOffsetY=6;
@@ -678,8 +683,8 @@ function desenharArte(rod){
   const todos=dd.top||[];
   const melhores=todos.slice(0,5);
   const piores=todos.slice(-5).reverse();
-  lista(cxE, 712, 'TOP 5 DA RODADA', '#4ade80', melhores, i => i+1);
-  lista(cxD, 712, 'OS 5 PIORES',     '#f0857a', piores,   i => todos.length - i);
+  lista(cxE, 712, 'TOP 5 DA RODADA',      '#ff9d52', melhores, i => i+1);
+  lista(cxD, 712, 'PELOTÃO DA VERGONHA',   '#9db3c9', piores,   i => todos.length - i);
 
   // rodape
   g.fillStyle='rgba(0,0,0,.5)'; g.fillRect(0,H-80,S,80);
