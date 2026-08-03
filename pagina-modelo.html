@@ -153,6 +153,15 @@
   .duelo{background:var(--card);border:1px solid var(--line);border-radius:9px;overflow:hidden;
          box-shadow:0 1px 2px rgba(20,24,15,.05)}
   .duelo.pend{border-style:dashed;background:var(--card2)}
+  /* fase em andamento: a que sera decidida na rodada atual */
+  .fase.agora .duelo{border-color:var(--gold);border-width:2px;border-style:solid;
+                     background:var(--goldL);box-shadow:0 2px 8px rgba(200,144,26,.18)}
+  .fase.agora h4{color:var(--gold);font-weight:600}
+  .fase.agora .duelo .lado{font-weight:600}
+  .aovivo{display:inline-flex;align-items:center;gap:4px;background:var(--gold);color:#fff;
+          border-radius:20px;padding:1px 8px;font-size:9.5px;letter-spacing:.06em;margin-left:4px}
+  .aovivo i{width:5px;height:5px;border-radius:50%;background:#fff;
+            animation:pulsa 1.6s ease-in-out infinite}
   .duelo .lado{padding:7px 9px;font-size:12.5px;display:flex;gap:7px;align-items:center}
   .duelo .lado + .lado{border-top:1px solid var(--line)}
   .duelo .lado.v{background:var(--greenL);font-weight:700;color:var(--green);
@@ -216,7 +225,44 @@
                             text-transform:uppercase}
   .recopa .vs{font-family:var(--f-tit);opacity:.6;font-size:15px}
 
+  /* ---- aba Rodada / arte ---- */
+  .arte{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .arte canvas{width:100%;max-width:420px;height:auto;border-radius:12px;
+               border:1px solid var(--line);box-shadow:var(--shadow);background:#fff}
+  .artelado{flex:1;min-width:230px}
+  .btbaixar{background:var(--green);color:#fff;border:0;border-radius:9px;padding:11px 18px;
+            font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;width:100%;margin-bottom:8px}
+  .btbaixar:hover{background:var(--green2)}
+  .btbaixar.sec{background:var(--card);color:var(--green);border:1px solid var(--line)}
+  .dupdest{display:grid;gap:10px;margin-bottom:12px}
+  .dest{border-radius:10px;padding:12px 14px;border:1px solid var(--line)}
+  .dest.cheia{background:var(--greenL);border-color:#b6dcc4}
+  .dest.murcha{background:#fdecea;border-color:#f0c4bf}
+  .dest .tag{font-family:var(--f-tit);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+  .dest.cheia .tag{color:var(--green)} .dest.murcha .tag{color:var(--red)}
+  .dest .nm{font-family:var(--f-tit);font-size:17px;font-weight:600;margin-top:2px;line-height:1.15}
+  .dest .pt{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim)}
+
+  /* barra de acoes fixa no fim de toda aba */
+  .acoes{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;
+         padding:12px 14px;background:var(--card2);border:1px solid var(--line);border-radius:10px}
+  .btpdf{background:var(--card);color:var(--green);border:1px solid var(--line);border-radius:8px;
+         padding:9px 16px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .btpdf:hover{background:var(--greenL);border-color:var(--green)}
+  .acoes .dica{font-size:11.5px;color:var(--dim);flex:1;min-width:180px}
+
   @media (max-width:640px){ .app{padding:10px 8px 34px} .fix2{min-width:114px} .fase{min-width:178px} }
+  @media print{
+    nav,.painel,.btbaixar,.rodapenao,.acoes{display:none!important}
+    .app{max-width:100%;padding:0}
+    .card{box-shadow:none;break-inside:avoid;border-color:#ccc}
+    .rolagem{overflow:visible!important;border:0}
+    table{font-size:10px} th,td{padding:3px 4px}
+    .fix1,.fix2{position:static!important}
+    .prem,.capa{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    tr.r1 td,tr.r2 td,tr.r3 td,.lug,.dest{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    @page{margin:12mm}
+  }
 </style>
 </head>
 <body>
@@ -248,13 +294,17 @@
 
   <nav id="nav"></nav>
   <div id="tela"></div>
+  <div class="acoes rodapenao">
+    <button class="btpdf" onclick="window.print()">🖨 Salvar esta aba em PDF</button>
+    <span class="dica">No diálogo que abrir, escolha <b>Salvar como PDF</b> em vez de impressora.</span>
+  </div>
   <footer id="rodape"></footer>
 </div>
 
 <script>
 const D = __DADOS__;
 
-let ABA='anual', BUSCA='', ORDEM=null;
+let ABA='rodada', BUSCA='', ORDEM=null;
 const OCULTAS = {};
 
 const $   = s => document.querySelector(s);
@@ -273,7 +323,7 @@ const COMPS = {
   turno2: {rot:'2º Turno',     de:20,ate:38, dica:'Rodadas 20 a 38'},
   capitao:{rot:'Capitão Mito', de:1, ate:38, dica:'Soma dos pontos dos capitães · o capitão vale 1,5×'}
 };
-const ABAS = [['anual','Anual'],['turno1','1º Turno'],['turno2','2º Turno'],
+const ABAS = [['rodada','Rodada'],['anual','Anual'],['turno1','1º Turno'],['turno2','2º Turno'],
               ['copas','Copas'],['capitao','Capitão Mito'],['mitao','Mitão'],['rico','Mais Rico']];
 let COPA = 'libertadores';
 
@@ -462,6 +512,134 @@ function telaMaisRico(){
       </tbody></table></div></div>`;
 }
 
+/* ---------- aba Rodada: bola cheia e bola murcha ---------- */
+function destaquesRodada(rod){
+  const ids = new Set((D.anual||[]).map(t => t.id));   // só inscritos no anual
+  const lista = [];
+  ids.forEach(id => {
+    const d = D.detalhe[id];
+    const p = d && d.pts ? d.pts[rod] : null;
+    if (p != null) {
+      const t = D.anual.find(x => x.id === id);
+      lista.push({ id, time: t ? t.time : '', pontos: p,
+                   cap: d.cap && d.cap[rod] ? d.cap[rod][0] : null });
+    }
+  });
+  lista.sort((a,b) => b.pontos - a.pontos);
+  return { cheia: lista[0], murcha: lista[lista.length-1], n: lista.length };
+}
+
+function desenharArte(rod){
+  const c = document.getElementById('cv');
+  if(!c) return;
+  const g = c.getContext('2d');
+  const S = 1080;
+  c.width = S; c.height = S;
+  const dd = destaquesRodada(rod);
+  if(!dd.cheia) return;
+
+  const V='#0f7b3f', V2='#128a46', OURO='#c8901a', ESC='#12100e', BR='#ffffff';
+  const F = (p,w) => `${w} ${p}px Oswald, Impact, sans-serif`;
+  const R = (t) => `${t}px Roboto, Arial, sans-serif`;
+  const cortar = (txt, px, max) => {
+    g.font = px; let s = txt;
+    while (g.measureText(s).width > max && s.length > 4) s = s.slice(0, -1);
+    return s === txt ? txt : s.trim() + '…';
+  };
+
+  // fundo com listras de campo
+  g.fillStyle = V2; g.fillRect(0,0,S,S);
+  g.fillStyle = V;
+  for(let x=0; x<S; x+=180) g.fillRect(x,0,90,S);
+  g.fillStyle = 'rgba(255,255,255,.07)';
+  g.beginPath(); g.arc(S/2, S/2, 300, 0, Math.PI*2); g.lineWidth=6;
+  g.strokeStyle='rgba(255,255,255,.09)'; g.stroke();
+
+  // faixa superior
+  g.fillStyle = ESC; g.fillRect(0,0,S,150);
+  g.fillStyle = OURO; g.fillRect(0,150,S,6);
+  g.fillStyle = BR; g.font = F(46,'600'); g.textAlign='left';
+  g.fillText('LIGA VILA CARTOBROTHERS', 48, 78);
+  g.fillStyle = '#b9c2b4'; g.font = R(26);
+  g.fillText(`Rodada ${rod} · Temporada ${D.temporada||2026}`, 50, 118);
+
+  // cartao helper
+  function cartao(y, alt, cor, corTxt, etiqueta, emoji, time, pts, extra){
+    const m=60, w=S-m*2;
+    g.fillStyle='rgba(0,0,0,.18)'; g.fillRect(m+5, y+6, w, alt);
+    g.fillStyle=BR; g.fillRect(m, y, w, alt);
+    g.fillStyle=cor; g.fillRect(m, y, 14, alt);
+    g.textAlign='left';
+    g.fillStyle=cor; g.font=F(30,'500');
+    g.fillText(etiqueta, m+42, y+56);
+    g.font=R(52); g.fillText(emoji, w+m-90, y+62);
+    g.fillStyle=ESC; g.font=F(52,'600');
+    g.fillText(cortar(time, F(52,'600'), w-190), m+42, y+120);
+    g.fillStyle=corTxt; g.font=F(76,'600');
+    g.fillText(pts.toFixed(2).replace('.',','), m+42, y+alt-38);
+    g.fillStyle='#7a8378'; g.font=R(24);
+    g.fillText('pontos', m+42+g.measureText(pts.toFixed(2)).width+130, y+alt-42);
+    if(extra){ g.fillStyle='#7a8378'; g.font=R(25); g.textAlign='right';
+               g.fillText(extra, S-m-30, y+alt-42); g.textAlign='left'; }
+  }
+
+  cartao(215, 300, V,        V,        'BOLA CHEIA',  '🔥', dd.cheia.time,  dd.cheia.pontos,
+         dd.cheia.cap ? 'capitão: ' + dd.cheia.cap : '');
+  cartao(560, 300, '#b23b2e','#b23b2e','BOLA MURCHA', '💀', dd.murcha.time, dd.murcha.pontos,
+         dd.murcha.cap ? 'capitão: ' + dd.murcha.cap : '');
+
+  // rodape
+  g.fillStyle='rgba(0,0,0,.35)'; g.fillRect(0,S-70,S,70);
+  g.fillStyle='#cfd8cb'; g.font=R(23); g.textAlign='center';
+  g.fillText(`${dd.n} times na disputa · dados oficiais do Cartola FC`, S/2, S-28);
+  g.textAlign='left';
+}
+
+function baixarArte(rod){
+  const c = document.getElementById('cv');
+  const a = document.createElement('a');
+  a.download = `liga-vila-cartobrothers-rodada-${rod}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+
+function telaRodada(){
+  const rods = [];
+  for(let r=D.rodada; r>=1; r--) rods.push(r);
+  if(window.__rodArte == null) window.__rodArte = D.rodada;
+  const rod = window.__rodArte;
+  const dd = destaquesRodada(rod);
+  if(!dd.cheia) return `<div class="card"><h2>Rodada</h2><div class="vazio">Sem dados desta rodada.</div></div>`;
+
+  setTimeout(() => desenharArte(rod), 30);
+
+  return `<div class="card">
+    <div class="cab"><h2>Bola cheia e bola murcha</h2></div>
+    <div class="hint">Arte pronta para mandar no grupo · entre os ${dd.n} inscritos no anual</div>
+    <div class="painel"><div class="plinha">
+      <span class="rot">Rodada</span>
+      ${rods.map(r=>`<button class="chip ${r===rod?'on':''}"
+         onclick="window.__rodArte=${r};render()">${r}</button>`).join('')}
+    </div></div>
+    <div class="arte">
+      <canvas id="cv" width="1080" height="1080"></canvas>
+      <div class="artelado">
+        <div class="dupdest">
+          <div class="dest cheia"><div class="tag">🔥 Bola cheia</div>
+            <div class="nm">${esc(dd.cheia.time)}</div>
+            <div class="pt">${num(dd.cheia.pontos)} pontos${dd.cheia.cap?' · capitão '+esc(dd.cheia.cap):''}</div></div>
+          <div class="dest murcha"><div class="tag">💀 Bola murcha</div>
+            <div class="nm">${esc(dd.murcha.time)}</div>
+            <div class="pt">${num(dd.murcha.pontos)} pontos${dd.murcha.cap?' · capitão '+esc(dd.murcha.cap):''}</div></div>
+        </div>
+        <button class="btbaixar" onclick="baixarArte(${rod})">⬇ Baixar imagem</button>
+        <div class="legenda">A imagem sai em 1080×1080, tamanho certo para o WhatsApp.
+          Escolha a rodada acima para gerar a arte de qualquer uma.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
 function telaMitao(){
   const m = (D.mitao||[]).slice().reverse(), rec = D.mitadaAno;
   return `
@@ -564,9 +742,15 @@ function telaCopas(){
     <div class="premio">${brl(inf.premio)}<span>Premiação</span></div>
   </div>`;
 
-  const chave = `<div class="chave">${c.fases.map(f=>`
-    <div class="fase">
-      <h4>${esc(f.nome)} · <b>R${f.rodada}</b>${f.disputada?'':' <span class="pend">a jogar</span>'}</h4>
+  // fase em andamento = a primeira nao disputada, se ela cai na rodada que esta rolando
+  const emJogo = D.rodada + 1;   // a rodada atual do Cartola, ainda sem pontos
+  const chave = `<div class="chave">${c.fases.map(f=>{
+    const agora = !f.disputada && f.rodada === emJogo;
+    return `
+    <div class="fase ${agora?'agora':''}">
+      <h4>${esc(f.nome)} · <b>R${f.rodada}</b>${
+        agora ? ' <span class="aovivo"><i></i>EM JOGO</span>'
+              : (f.disputada ? '' : ' <span class="pend">a jogar</span>')}</h4>
       ${f.duelos.map(d=>{
         const pend = (d.aPts==null || d.bPts==null);
         const lado = (nome,seed,pts,venceu) =>
@@ -580,7 +764,7 @@ function telaCopas(){
           ${lado(d.b,d.bSeed,d.bPts,d.venc===d.b)}
         </div>`;
       }).join('')}
-    </div>`).join('')}
+    </div>`;}).join('')}
     <div class="fase">
       <h4>Campeão</h4>
       ${c.campeao
@@ -632,7 +816,8 @@ function render(){
   $('#atz').innerHTML = `<span class="bolinha"></span>Atualizado em ${esc(D.atualizado||'—')}`;
   $('#nav').innerHTML = ABAS.map(([k,t])=>
     `<button class="${k===ABA?'on':''}" onclick="ABA='${k}';BUSCA='';ORDEM=null;render()">${t}</button>`).join('');
-  $('#tela').innerHTML = (ABA==='mitao') ? telaMitao()
+  $('#tela').innerHTML = (ABA==='rodada')? telaRodada()
+                       : (ABA==='mitao') ? telaMitao()
                        : (ABA==='copas') ? telaCopas()
                        : (ABA==='rico')  ? telaMaisRico()
                        : telaGrade(ABA);
