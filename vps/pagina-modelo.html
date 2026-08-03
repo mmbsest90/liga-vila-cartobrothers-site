@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liga Vila Cartobrothers</title>
+<meta name="theme-color" content="#0f7b3f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f4f6f2; --card:#fff; --card2:#f8faf6; --line:#e2e7dd;
+    --txt:#14180f; --dim:#6b7566;
+    --green:#0f7b3f; --green2:#128a46; --greenL:#e8f4ec;
+    --gold:#c8901a; --goldL:#fdf5e3; --red:#b23b2e;
+    --ouro:#c8901a;   --ouroBg:#fdf7e8;
+    --prata:#8c948a;  --prataBg:#f4f6f3;
+    --bronze:#b0713a; --bronzeBg:#fbf2e9;
+    --f-tit:'Oswald',Impact,'Arial Narrow',sans-serif;
+    --f-txt:'Roboto',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --shadow:0 1px 2px rgba(20,24,15,.05),0 1px 8px rgba(20,24,15,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--f-txt);
+       line-height:1.5;font-size:15px;-webkit-text-size-adjust:100%}
+  .app{max-width:1200px;margin:0 auto;padding:14px 14px 40px}
+
+  header{display:flex;align-items:center;gap:12px;padding:10px 0 14px}
+  .ttl{font-family:var(--f-tit);font-size:22px;font-weight:600;line-height:1.05;
+       letter-spacing:.02em;text-transform:uppercase}
+  .sub{color:var(--dim);font-size:12px;margin-top:2px}
+  .atz{display:inline-flex;align-items:center;gap:6px;margin-top:5px;padding:3px 10px;border-radius:20px;
+       background:var(--greenL);border:1px solid #b6dcc4;color:var(--green);
+       font-size:11.5px;font-weight:600}
+  .atz .bolinha{width:6px;height:6px;border-radius:50%;background:var(--green);flex:none;
+                animation:pulsa 2.4s ease-in-out infinite}
+  @keyframes pulsa{0%,100%{opacity:1}50%{opacity:.35}}
+
+  nav{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);
+      margin-bottom:14px;-webkit-overflow-scrolling:touch}
+  nav button{background:transparent;color:var(--dim);border:0;border-bottom:2.5px solid transparent;
+    padding:10px 13px;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
+  nav button.on{color:var(--green);border-bottom-color:var(--green)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:11px;
+        padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .card h2{font-family:var(--f-tit);font-size:16px;margin:0 0 2px;font-weight:500;letter-spacing:.02em}
+  .hint{color:var(--dim);font-size:12px;margin-bottom:10px}
+
+  .painel{background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:10px 11px;margin-bottom:11px}
+  .plinha{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .plinha + .plinha{margin-top:9px;padding-top:9px;border-top:1px solid var(--line)}
+  .rot{font-family:var(--f-tit);font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+
+  .chip{background:var(--card);border:1px solid var(--line);color:var(--dim);border-radius:6px;
+        padding:4px 9px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--f-tit);
+        letter-spacing:.03em;user-select:none}
+  .chip:hover{border-color:var(--green)}
+  .chip.on{background:var(--green);border-color:var(--green);color:#fff}
+  .chip.acao{font-family:var(--f-txt);font-size:11.5px;font-weight:500;padding:4px 10px}
+  .chip.ultima{border-color:var(--gold);border-width:2px;padding:3px 8px}
+  .chip.ultima.on{background:var(--green);border-color:var(--gold)}
+
+  .busca{flex:1;min-width:160px;padding:7px 11px;border:1px solid var(--line);border-radius:7px;
+         font-size:13.5px;font-family:inherit;background:var(--card)}
+
+  .rolagem{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px}
+  table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--card)}
+  th{font-family:var(--f-tit);color:var(--dim);font-weight:500;font-size:10.5px;
+     text-transform:uppercase;letter-spacing:.05em;position:sticky;top:0;z-index:2}
+  td.n,th.n{text-align:right}
+  td.n{font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}
+
+  .fix1{position:sticky;left:0;z-index:3;width:36px}
+  .fix2{position:sticky;left:36px;z-index:3;min-width:134px;max-width:190px;white-space:normal;
+        border-right:1px solid var(--line)}
+  th.fix1,th.fix2{z-index:4}
+  .pos{font-family:var(--f-tit);font-weight:600;font-size:14px;color:var(--dim);text-align:center}
+  .time{font-weight:500;font-size:12.5px;line-height:1.3}
+  tr:hover td{filter:brightness(.985)}
+
+  /* ---- rodada atual: moldura, sem preenchimento ---- */
+  th.ult,td.ult{box-shadow:inset 2px 0 0 var(--gold), inset -2px 0 0 var(--gold)}
+  th.ult{color:var(--gold);font-weight:700;box-shadow:inset 2px 0 0 var(--gold),
+         inset -2px 0 0 var(--gold), inset 0 2px 0 var(--gold)}
+  tr.fimtab td.ult{box-shadow:inset 2px 0 0 var(--gold), inset -2px 0 0 var(--gold), inset 0 -2px 0 var(--gold)}
+
+  /* ---- podio ---- */
+  tr.r1 td{background:var(--ouroBg)}
+  tr.r2 td{background:var(--prataBg)}
+  tr.r3 td{background:var(--bronzeBg)}
+  tr.r1 .fix1{box-shadow:inset 4px 0 0 var(--ouro)}
+  tr.r2 .fix1{box-shadow:inset 4px 0 0 var(--prata)}
+  tr.r3 .fix1{box-shadow:inset 4px 0 0 var(--bronze)}
+  tr.r1 .pos,tr.r2 .pos,tr.r3 .pos{font-size:19px;font-weight:700}
+  tr.r1 .pos{color:var(--ouro)} tr.r2 .pos{color:var(--prata)} tr.r3 .pos{color:var(--bronze)}
+  tr.r1 .time,tr.r2 .time,tr.r3 .time{font-size:14px;font-weight:700}
+  tr.r1 .tot,tr.r2 .tot,tr.r3 .tot{font-size:14px}
+  .medalha{font-size:11px;margin-left:3px}
+
+  td.tot,th.tot{border-left:1px solid var(--line);font-weight:700}
+  .neg{color:var(--red)} .zero{color:var(--green)}
+  .capnome{font-size:11px;color:var(--dim);display:block;line-height:1.2}
+  .corte td{border-top:2px dashed #d8c99a;padding-top:10px}
+
+  .destaque{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-bottom:12px}
+  .dcard{background:var(--goldL);border:1.5px solid #e8c979;border-radius:10px;padding:13px 15px}
+  .dcard .lab{font-family:var(--f-tit);font-size:11px;color:var(--gold);text-transform:uppercase;
+              letter-spacing:.06em;font-weight:500}
+  .dcard .nm{font-family:var(--f-tit);font-weight:600;margin-top:3px;font-size:17px;letter-spacing:.01em}
+  .dcard .vl{color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
+
+  .vazio{color:var(--dim);font-size:13px;padding:14px;text-align:center}
+  .legenda{font-size:11px;color:var(--dim);margin-top:8px;line-height:1.6}
+  footer{text-align:center;color:var(--dim);font-size:11.5px;margin-top:22px;line-height:1.7}
+  .badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10.5px;font-weight:700;
+         background:var(--goldL);color:var(--gold);border:1px solid #e8c979}
+
+  /* selo de situacao da competicao */
+  .cab{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:2px}
+  .selo{display:inline-flex;align-items:center;gap:5px;font-family:var(--f-tit);font-size:10.5px;
+        font-weight:500;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:20px}
+  .selo.parcial{background:#fff5e0;color:#8a6410;border:1px solid #e8c979}
+  .selo.pronto{background:var(--greenL);color:var(--green);border:1px solid #b6dcc4}
+  .selo .pt{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+  .barra{height:4px;background:var(--line);border-radius:3px;overflow:hidden;margin:7px 0 10px}
+  .barra i{display:block;height:100%;background:var(--green);border-radius:3px}
+  .aviso{background:#fff5e0;border:1px solid #e8c979;border-radius:8px;padding:8px 11px;
+         font-size:12px;color:#8a6410;margin-bottom:11px}
+  /* ---- chaveamento ---- */
+  .capa{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:11px;margin-bottom:12px;
+        background:linear-gradient(105deg,#0f7b3f,#128a46 55%,#15a052);color:#fff}
+  .capa.sula{background:linear-gradient(105deg,#8a5a12,#b0771f 55%,#c8901a)}
+  .capa .tr{flex:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+  .capa .info{flex:1}
+  .capa .nome{font-family:var(--f-tit);font-size:21px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;line-height:1.1}
+  .capa .meta{font-size:12px;opacity:.9;margin-top:3px}
+  .capa .premio{font-family:var(--f-tit);font-size:19px;font-weight:600;text-align:right;line-height:1}
+  .capa .premio span{display:block;font-size:9.5px;letter-spacing:.08em;opacity:.85;font-weight:400}
+
+  .chave{display:flex;gap:0;overflow-x:auto;padding:4px 2px 12px;-webkit-overflow-scrolling:touch}
+  .fase{display:flex;flex-direction:column;justify-content:space-around;gap:12px;min-width:196px;flex:none;
+        padding-right:20px;position:relative}
+  .fase:not(:last-child)::after{content:'';position:absolute;right:8px;top:50%;width:6px;height:6px;
+        border-top:2px solid var(--line);border-right:2px solid var(--line);transform:rotate(45deg) translateY(-50%)}
+  .fase h4{font-family:var(--f-tit);font-size:10.5px;color:var(--dim);text-transform:uppercase;
+           letter-spacing:.06em;margin:0 0 4px;text-align:center;font-weight:500}
+  .fase h4 b{color:var(--green)}
+  .fase h4 .pend{color:var(--gold)}
+
+  .duelo{background:var(--card);border:1px solid var(--line);border-radius:9px;overflow:hidden;
+         box-shadow:0 1px 2px rgba(20,24,15,.05)}
+  .duelo.pend{border-style:dashed;background:var(--card2)}
+  .duelo .lado{padding:7px 9px;font-size:12.5px;display:flex;gap:7px;align-items:center}
+  .duelo .lado + .lado{border-top:1px solid var(--line)}
+  .duelo .lado.v{background:var(--greenL);font-weight:700;color:var(--green);
+                 box-shadow:inset 3px 0 0 var(--green)}
+  .duelo .lado.x{opacity:.5}
+  .duelo .lado.x .nm{text-decoration:line-through;text-decoration-thickness:1px}
+  .duelo .sd{font-family:var(--f-tit);font-size:9.5px;color:var(--dim);min-width:19px;text-align:right}
+  .duelo .lado.v .sd{color:var(--green)}
+  .duelo .nm{flex:1;white-space:normal;line-height:1.25}
+  .duelo .pt{font-variant-numeric:tabular-nums;font-size:12px;color:var(--dim);font-weight:500}
+  .duelo .lado.v .pt{color:var(--green);font-weight:700}
+
+  .podio{background:linear-gradient(160deg,#fdf5e3,#fff);border:2px solid var(--gold);border-radius:11px;
+         padding:16px 14px;text-align:center;min-width:186px}
+  .podio .lab{font-family:var(--f-tit);font-size:10px;color:var(--gold);text-transform:uppercase;
+              letter-spacing:.09em;margin-top:6px}
+  .podio .nm{font-family:var(--f-tit);font-size:17px;font-weight:600;margin-top:4px;line-height:1.15}
+  .podio .pr{font-size:12px;color:var(--dim);margin-top:5px}
+  .aguarda{border:1px dashed var(--line);border-radius:11px;padding:16px 12px;text-align:center;
+           color:var(--dim);font-size:12px;min-width:172px;background:var(--card2)}
+
+  /* ---- faixa de premiacao ---- */
+  .prem{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:12px;margin-bottom:12px;
+        background:linear-gradient(115deg,#4a2378 0%,#63309b 45%,#7b3fbd 100%);color:#fff;flex-wrap:wrap;
+        box-shadow:0 2px 10px rgba(74,35,120,.18)}
+  .prem.ind{background:linear-gradient(115deg,#3d1f66 0%,#5a2c8f 55%,#6f39ab 100%)}
+  .prem .tt{font-family:var(--f-tit);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+  .prem .lugares{display:flex;gap:9px;flex-wrap:wrap;flex:1}
+
+  .lug{border-radius:9px;padding:8px 12px;min-width:126px;flex:1;position:relative;overflow:hidden}
+  .lug .p{font-family:var(--f-tit);font-size:10px;letter-spacing:.07em;display:flex;align-items:center;gap:4px}
+  .lug .v{font-family:var(--f-tit);font-size:17px;font-weight:600;line-height:1.1;margin-top:2px}
+  .lug .q{font-size:11px;margin-top:2px;line-height:1.25;opacity:.95}
+
+  /* cada lugar com sua propria identidade */
+  .lug.l1{background:linear-gradient(150deg,#f6d67a,#d9a52e);color:#3d2a05;flex:1.35;
+          box-shadow:0 2px 8px rgba(0,0,0,.18)}
+  .lug.l1 .v{font-size:21px}
+  .lug.l1 .p{opacity:.75}
+  .lug.l2{background:linear-gradient(150deg,#e8ecea,#b8c2bd);color:#2b322e}
+  .lug.l2 .p{opacity:.7}
+  .lug.l3{background:linear-gradient(150deg,#e5b98f,#c2854d);color:#3a2513}
+  .lug.l3 .p{opacity:.75}
+  .lug.dono::after{content:'';position:absolute;inset:0;border-radius:9px;
+                   box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)}
+
+  .subabas{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .subabas button{background:var(--card);border:1px solid var(--line);color:var(--dim);border-radius:7px;
+    padding:6px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  .subabas button.on{background:var(--green);border-color:var(--green);color:#fff}
+  .recopa{background:linear-gradient(105deg,#12100e,#2a2620);color:#fff;border-radius:11px;padding:16px}
+  .recopa.aguardando{background:linear-gradient(105deg,#2e2b26,#403c34)}
+  .recopa .nome{font-family:var(--f-tit);font-size:18px;letter-spacing:.03em;text-transform:uppercase}
+  .recopa .meta{font-size:12px;opacity:.85;margin-top:2px}
+  .recopa .dupla{display:flex;gap:10px;align-items:center;margin-top:13px;flex-wrap:wrap}
+  .recopa .lado{background:rgba(255,255,255,.12);border-radius:8px;padding:10px 13px;font-weight:600;
+                flex:1;min-width:140px;text-align:center}
+  .recopa .lado.vazia{background:transparent;border:1px dashed rgba(255,255,255,.3);
+                      font-weight:500;opacity:.72;font-size:12.5px;line-height:1.4}
+  .recopa .lado.vazia small{font-size:10.5px;opacity:.8;font-family:var(--f-tit);letter-spacing:.06em;
+                            text-transform:uppercase}
+  .recopa .vs{font-family:var(--f-tit);opacity:.6;font-size:15px}
+
+  @media (max-width:640px){ .app{padding:10px 8px 34px} .fix2{min-width:114px} .fase{min-width:178px} }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <svg width="42" height="47" viewBox="0 0 92 104" xmlns="http://www.w3.org/2000/svg" role="img" style="flex:none">
+      <title>Escudo da Liga Vila Cartobrothers</title>
+      <path d="M46 3 L86 15 V52 C86 76 68 92 46 101 C24 92 6 76 6 52 V15 Z" fill="#12100e"/>
+      <clipPath id="cs"><path d="M46 9 L80 19 V52 C80 72 65 86 46 94 C27 86 12 72 12 52 V19 Z"/></clipPath>
+      <g clip-path="url(#cs)">
+        <rect x="0" y="0" width="92" height="104" fill="#128a46"/>
+        <rect x="12" y="0" width="12" height="104" fill="#0f7b3f"/>
+        <rect x="36" y="0" width="12" height="104" fill="#0f7b3f"/>
+        <rect x="60" y="0" width="12" height="104" fill="#0f7b3f"/>
+        <rect x="0" y="60" width="92" height="3" fill="rgba(255,255,255,.5)"/>
+        <circle cx="46" cy="60" r="11" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="3"/>
+      </g>
+      <rect x="31" y="28" width="30" height="22" rx="2" fill="#12100e"/>
+      <rect x="31" y="42" width="30" height="6.5" fill="#c8901a"/>
+      <ellipse cx="46" cy="52" rx="23" ry="4.5" fill="#12100e"/>
+    </svg>
+    <div>
+      <div class="ttl">Liga Vila Cartobrothers</div>
+      <div class="sub" id="sub"></div>
+      <div class="atz" id="atz"></div>
+    </div>
+  </header>
+
+  <nav id="nav"></nav>
+  <div id="tela"></div>
+  <footer id="rodape"></footer>
+</div>
+
+<script>
+const D = __DADOS__;
+
+let ABA='anual', BUSCA='', ORDEM=null;
+const OCULTAS = {};
+
+const $   = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+const num = v => (v==null||v==='') ? '' : Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const dif = v => {
+  if(v==null) return '';
+  const n=Number(v);
+  return Math.abs(n)<0.005 ? '<span class="zero">0,00</span>' : '<span class="neg">'+num(n)+'</span>';
+};
+const MEDALHA = {1:'🥇',2:'🥈',3:'🥉'};
+
+const COMPS = {
+  anual : {rot:'Anual',        de:1, ate:38, dica:'Todas as 38 rodadas · define os prêmios individuais e as copas'},
+  turno1: {rot:'1º Turno',     de:1, ate:19, dica:'Rodadas 1 a 19'},
+  turno2: {rot:'2º Turno',     de:20,ate:38, dica:'Rodadas 20 a 38'},
+  capitao:{rot:'Capitão Mito', de:1, ate:38, dica:'Soma dos pontos dos capitães · o capitão vale 1,5×'}
+};
+const ABAS = [['anual','Anual'],['turno1','1º Turno'],['turno2','2º Turno'],
+              ['copas','Copas'],['capitao','Capitão Mito'],['mitao','Mitão'],['rico','Mais Rico']];
+let COPA = 'libertadores';
+
+function situacao(comp){
+  const c = COMPS[comp];
+  const total = c.ate - c.de + 1;
+  const feitas = Math.max(0, Math.min(c.ate, D.rodada) - c.de + 1);
+  const pronto = feitas >= total;
+  return {total, feitas, pronto, pct: Math.round(feitas/total*100)};
+}
+function selo(comp){
+  const s = situacao(comp);
+  return s.pronto
+    ? `<span class="selo pronto"><i class="pt"></i>Encerrado · ${s.total} rodadas</span>`
+    : `<span class="selo parcial"><i class="pt"></i>Parcial · ${s.feitas} de ${s.total} rodadas</span>`;
+}
+function barra(comp){
+  const s = situacao(comp);
+  return s.pronto ? '' : `<div class="barra"><i style="width:${s.pct}%"></i></div>`;
+}
+
+const rodadasDe = comp => {
+  const c=COMPS[comp], r=[];
+  for(let x=c.de; x<=Math.min(c.ate,D.rodada); x++) r.push(x);
+  return r;
+};
+const ocultas = comp => (OCULTAS[comp] = OCULTAS[comp] || new Set());
+const visiveis = comp => rodadasDe(comp).filter(r => !ocultas(comp).has(r));
+function alterna(comp,r){ const o=ocultas(comp); o.has(r)?o.delete(r):o.add(r); render(); }
+function todas(comp,q){
+  const o=ocultas(comp); o.clear();
+  if(q){ const rs=rodadasDe(comp); rs.slice(0,Math.max(0,rs.length-q)).forEach(r=>o.add(r)); }
+  render();
+}
+function nenhuma(comp){ const o=ocultas(comp); rodadasDe(comp).forEach(r=>o.add(r)); render(); }
+
+function detalhe(id,rod){
+  const d=D.detalhe[id];
+  if(!d) return {};
+  const c=d.cap?d.cap[rod]:null;
+  return {pts:d.pts?d.pts[rod]:null, cap:c?c[0]:null, capPts:c?c[1]:null};
+}
+
+function painel(comp){
+  const rs=rodadasDe(comp), o=ocultas(comp), ult=rs[rs.length-1];
+  return `<div class="painel">
+    <div class="plinha">
+      <span class="rot">Rodadas</span>
+      <button class="chip acao" onclick="todas('${comp}')">Todas</button>
+      <button class="chip acao" onclick="todas('${comp}',5)">Últimas 5</button>
+      <button class="chip acao" onclick="nenhuma('${comp}')">Nenhuma</button>
+      ${rs.map(r=>`<button class="chip ${o.has(r)?'':'on'} ${r===ult?'ultima':''}"
+        onclick="alterna('${comp}',${r})">${r}</button>`).join('')}
+    </div>
+    <div class="plinha">
+      <input class="busca" id="q" placeholder="Buscar time..." value="${esc(BUSCA)}"
+        oninput="BUSCA=this.value;render();const e=document.getElementById('q');e.focus();e.setSelectionRange(e.value.length,e.value.length)">
+    </div>
+  </div>`;
+}
+
+/* grade unica usada pelas classificacoes e pelo Capitao Mito */
+function grade(comp){
+  const c = COMPS[comp];
+  const ehCap = comp==='capitao';
+  let lista = (ehCap ? D.capitaoMito : D[comp]) || [];
+  if(!lista.length) return `<div class="vazio">Ainda não há dados nesta competição.</div>`;
+  lista = lista.slice();
+
+  const rs = visiveis(comp), rsTodas = rodadasDe(comp), ult = rsTodas[rsTodas.length-1];
+  const campo = ehCap ? 'capPts' : 'pts';
+  if(ORDEM!=null && rsTodas.includes(ORDEM))
+    lista.sort((a,b)=>((detalhe(b.id,ORDEM)[campo])??-999)-((detalhe(a.id,ORDEM)[campo])??-999));
+
+  const q = BUSCA.trim().toLowerCase();
+  const vis = q ? lista.filter(t=>(t.time||'').toLowerCase().includes(q)) : lista;
+  if(!vis.length) return '<div class="vazio">Nenhum time encontrado.</div>';
+
+  const base = (ehCap ? D.capitaoMito : D[comp]);
+  const lider = base[0], terceiro = base[2];
+
+  let h = `<div class="rolagem"><table><thead><tr>
+    <th class="fix1 pos">#</th><th class="fix2">Time</th>
+    ${rs.map(r=>`<th class="n ${r===ult?'ult':''}" style="cursor:pointer"
+       onclick="ORDEM=(ORDEM===${r}?null:${r});render()" title="ordenar por esta rodada">R${r}</th>`).join('')}
+    <th class="n tot">Total</th>${ehCap?'':'<th class="n">Méd</th>'}
+    <th class="n">Dif. 1º</th><th class="n">Dif. G3</th>
+  </tr></thead><tbody>`;
+
+  vis.forEach((t,i)=>{
+    const pos   = (ORDEM!=null && !q) ? i+1 : t.posicao;
+    const podio = (ORDEM==null && !q && pos<=3) ? ' r'+pos : '';
+    const corte = (comp==='anual' && ORDEM==null && !q && (t.posicao===17||t.posicao===49)) ? ' corte' : '';
+    const fim   = (i===vis.length-1) ? ' fimtab' : '';
+    const d1  = lider ? t.pontos-lider.pontos : null;
+    const dg3 = terceiro ? Math.min(0, t.pontos-terceiro.pontos) : null;
+    h += `<tr class="${podio}${corte}${fim}">
+      <td class="fix1 pos">${pos}</td>
+      <td class="fix2 time">${esc(t.time)}${podio?'<span class="medalha">'+MEDALHA[pos]+'</span>':''}</td>
+      ${rs.map(r=>{
+        const d = detalhe(t.id,r), u = r===ult ? ' ult' : '';
+        return ehCap
+          ? `<td class="n${u}"><span class="capnome">${esc(d.cap||'')}</span>${num(d.capPts)}</td>`
+          : `<td class="n${u}">${num(d.pts)}</td>`;
+      }).join('')}
+      <td class="n tot">${num(t.pontos)}</td>
+      ${ehCap?'':`<td class="n" style="color:var(--dim)">${num(t.media)}</td>`}
+      <td class="n">${dif(d1)}</td><td class="n">${dif(dg3)}</td>
+    </tr>`;
+  });
+
+  return h + `</tbody></table></div>
+  <div class="legenda">
+    ${ORDEM!=null ? '<b>Ordenado pela rodada '+ORDEM+'</b> — clique de novo no cabeçalho para voltar. '
+                  : 'Clique no cabeçalho de uma rodada para ordenar por ela. '}
+    A rodada mais recente aparece com moldura dourada.
+    <b>Dif. 1º</b>: distância para o líder. <b>Dif. G3</b>: distância para o 3º colocado.
+    ${comp==='anual' ? '<br>Linha tracejada: corte das copas ao fim do 1º turno — 1º ao 16º Libertadores, 17º ao 48º Sul-Americana.' : ''}
+  </div>`;
+}
+
+function telaGrade(comp){
+  const c = COMPS[comp], ehCap = comp==='capitao';
+  const rs = rodadasDe(comp), ult = rs[rs.length-1];
+  const mit = (D.mitao||[]).find(m=>m.rodada===ult);
+  const l1  = (ehCap ? D.capitaoMito : D[comp])[0];
+  const s = situacao(comp);
+  let topo = '';
+  if(ehCap && l1){
+    topo = `<div class="destaque"><div class="dcard">
+      <div class="lab">🎩 Capitão Mito — ${s.pronto?'campeão':'parcial'}</div>
+      <div class="nm">${esc(l1.time)}</div>
+      <div class="vl">${num(l1.pontos)} pontos somados com os capitães</div></div></div>`;
+  } else if(comp==='anual' && mit){
+    topo = `<div class="destaque"><div class="dcard">
+      <div class="lab">⭐ Mitão da rodada ${ult}</div>
+      <div class="nm">${esc(mit.time)}</div>
+      <div class="vl">${num(mit.pontos)} pontos</div></div></div>`;
+  }
+  const aviso = s.pronto
+    ? ''
+    : `<div class="aviso">Apuração <b>parcial</b>: faltam ${s.total-s.feitas} rodadas para o fim ${ehCap?'da disputa':'desta competição'}. Posições e prêmios ainda podem mudar.</div>`;
+  const faixa = ehCap
+    ? faixaIndividual('🎩 Capitão Mito', D.premios?D.premios.capitao:100,
+        l1?l1.time:null, l1?num(l1.pontos)+' pontos com os capitães':'')
+    : faixaPodio(comp);
+  return `${topo}${faixa}<div class="card">
+    <div class="cab"><h2>${ehCap ? 'Capitão Mito' : 'Classificação — '+c.rot}</h2>${selo(comp)}</div>
+    <div class="hint">${c.dica}</div>
+    ${barra(comp)}${aviso}${painel(comp)}${grade(comp)}
+  </div>`;
+}
+
+function telaMaisRico(){
+  const l = D.maisRico || [];
+  if(!l.length) return `<div class="card"><h2>Mais Rico</h2>
+    <div class="vazio">O patrimônio ainda não foi capturado. Rode o atualizador novamente.</div></div>`;
+  const q = BUSCA.trim().toLowerCase();
+  const vis = q ? l.filter(t=>(t.time||'').toLowerCase().includes(q)) : l;
+  const s = situacao('anual');
+  return `<div class="destaque"><div class="dcard">
+      <div class="lab">💰 Mais Rico — ${s.pronto?'campeão':'parcial'}</div>
+      <div class="nm">${esc(l[0].time)}</div>
+      <div class="vl">C$ ${num(l[0].patrimonio)} de patrimônio</div></div></div>
+    ${faixaIndividual('💰 Mais Rico', D.premios?D.premios.rico:100,
+        l[0]?l[0].time:null, l[0]?'C$ '+num(l[0].patrimonio)+' de patrimônio':'')}
+    <div class="card">
+      <div class="cab"><h2>Patrimônio em cartoletas</h2>${selo('anual')}</div>
+      <div class="hint">Maior patrimônio ao fim do Brasileirão · vale para inscritos no anual</div>
+      ${barra('anual')}
+      ${s.pronto?'':'<div class="aviso">Apuração <b>parcial</b>: o patrimônio muda a cada rodada até o fim da temporada.</div>'}
+      <div class="painel"><div class="plinha">
+        <input class="busca" id="q" placeholder="Buscar time..." value="${esc(BUSCA)}"
+          oninput="BUSCA=this.value;render();const e=document.getElementById('q');e.focus();e.setSelectionRange(e.value.length,e.value.length)">
+      </div></div>
+      <div class="rolagem"><table><thead><tr>
+        <th class="fix1 pos">#</th><th class="fix2">Time</th><th class="n tot">Patrimônio</th>
+      </tr></thead><tbody>
+      ${vis.map(t=>{
+        const podio = (!q && t.posicao<=3) ? ' r'+t.posicao : '';
+        return `<tr class="${podio}">
+          <td class="fix1 pos">${t.posicao}</td>
+          <td class="fix2 time">${esc(t.time)}${podio?'<span class="medalha">'+MEDALHA[t.posicao]+'</span>':''}</td>
+          <td class="n tot">C$ ${num(t.patrimonio)}</td></tr>`;
+      }).join('')}
+      </tbody></table></div></div>`;
+}
+
+function telaMitao(){
+  const m = (D.mitao||[]).slice().reverse(), rec = D.mitadaAno;
+  return `
+  ${rec?`<div class="destaque"><div class="dcard">
+      <div class="lab">🏅 Mitada do Ano — ${situacao('anual').pronto?'campeão':'parcial'}</div>
+      <div class="nm">${esc(rec.time)}</div>
+      <div class="vl">${num(rec.pontos)} pontos na rodada ${rec.rodada}</div></div></div>`:''}
+  ${faixaIndividual('🏅 Mitada do Ano', D.premios?D.premios.mitada:100,
+      rec?rec.time:null, rec?num(rec.pontos)+' pontos na rodada '+rec.rodada:'')}
+  <div class="card">
+    <div class="cab"><h2>Mitão de cada rodada</h2>${selo('anual')}</div>
+    <div class="hint">Maior pontuação da rodada entre os inscritos no anual</div>
+    ${barra('anual')}
+    ${situacao('anual').pronto?'':'<div class="aviso">Apuração <b>parcial</b>: a Mitada do Ano só é definida ao fim das 38 rodadas.</div>'}
+    <div class="rolagem"><table><thead><tr>
+      <th class="pos">Rod</th><th>Time</th><th class="n">Pontos</th></tr></thead><tbody>
+    ${m.map(x=>{
+      const eRec = rec && x.rodada===rec.rodada;
+      return `<tr class="${eRec?'r1':''}">
+        <td class="pos">${x.rodada}</td>
+        <td class="time">${esc(x.time)}${eRec?'<span class="medalha">🏅</span>':''}</td>
+        <td class="n tot">${num(x.pontos)}${eRec?' <span class="badge">Mitada do Ano</span>':''}</td></tr>`;
+    }).join('')}
+    </tbody></table></div></div>`;
+}
+
+const brl = v => 'R$ ' + Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+/* faixa de premiacao do pódio, com quem está em cada posição hoje */
+function faixaPodio(comp){
+  const P = D.premios; if(!P || !P[comp]) return '';
+  const lista = (comp==='capitao' ? D.capitaoMito : D[comp]) || [];
+  const pcts = P.pcts || [60,25,15];
+  const s = situacao(comp);
+  return `<div class="prem">
+    ${trofeu(34,'rgba(255,255,255,.95)','rgba(255,255,255,.6)')}
+    <div><div class="tt">Premiação</div>
+      <div style="font-size:12px;opacity:.9">${s.pronto?'definida':'parcial'}</div></div>
+    <div class="lugares">
+      ${P[comp].map((v,i)=>`<div class="lug l${i+1} ${lista[i]?'dono':''}">
+        <div class="p">${MEDALHA[i+1]} ${i+1}º lugar · ${pcts[i]}%</div>
+        <div class="v">${brl(v)}</div>
+        <div class="q">${lista[i] ? esc(lista[i].time) : '—'}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* faixa de premio individual (valor unico) */
+function faixaIndividual(titulo, valor, lider, detalheTxt){
+  return `<div class="prem ind">
+    ${trofeu(34,'rgba(255,255,255,.95)','rgba(255,255,255,.6)')}
+    <div style="flex:1"><div class="tt">${esc(titulo)}</div>
+      <div style="font-family:var(--f-tit);font-size:17px;font-weight:600;line-height:1.15;margin-top:2px">
+        ${lider ? esc(lider) : 'a definir'}</div>
+      ${detalheTxt ? `<div style="font-size:12px;opacity:.9">${esc(detalheTxt)}</div>` : ''}
+    </div>
+    <div style="font-family:var(--f-tit);font-size:19px;font-weight:600;text-align:right">
+      ${brl(valor)}<span style="display:block;font-size:9.5px;letter-spacing:.08em;opacity:.85;font-weight:400">Premiação</span>
+    </div>
+  </div>`;
+}
+
+function trofeu(tam, cor, cor2){
+  return `<svg class="tr" width="${tam}" height="${tam}" viewBox="0 0 48 48" aria-hidden="true">
+    <path d="M14 6h20v11a10 10 0 0 1-20 0z" fill="${cor}"/>
+    <path d="M14 6h20v4H14z" fill="${cor2}"/>
+    <path d="M14 9H9a5 5 0 0 0 5 8zM34 9h5a5 5 0 0 1-5 8z" fill="none" stroke="${cor}" stroke-width="2.4"/>
+    <rect x="21.5" y="26" width="5" height="7" fill="${cor}"/>
+    <path d="M15 40c0-3.5 3-5 9-5s9 1.5 9 5z" fill="${cor}"/>
+    <rect x="13" y="40" width="22" height="3.5" rx="1.4" fill="${cor2}"/>
+  </svg>`;
+}
+
+function telaCopas(){
+  const C = D.copas || {};
+  if(!C.libertadores && !C.sulamericana)
+    return `<div class="card"><h2>Copas</h2>
+      <div class="vazio">As copas só são definidas ao fim do 1º turno, na rodada 19.</div></div>`;
+
+  const INFO = {
+    libertadores:{nome:'Libertadores', premio:(D.premios?D.premios.libertadores:250), faixa:'1º ao 16º do anual', cls:''},
+    sulamericana:{nome:'Sul-Americana', premio:(D.premios?D.premios.sulamericana:200), faixa:'17º ao 48º do anual', cls:'sula'}
+  };
+  const c = C[COPA], inf = INFO[COPA];
+  const abas = `<div class="subabas">${Object.keys(INFO).filter(k=>C[k]).map(k=>
+      `<button class="${k===COPA?'on':''}" onclick="COPA='${k}';render()">${INFO[k].nome} · ${C[k].times} times</button>`).join('')}</div>`;
+  if(!c) return `<div class="card"><h2>Copas</h2>${abas}<div class="vazio">Sem dados.</div></div>`;
+
+  const total = c.fases.length, feitas = c.fases.filter(f=>f.disputada).length;
+  const proxima = c.fases.find(f=>!f.disputada);
+
+  const capa = `<div class="capa ${inf.cls}">
+    ${trofeu(46,'rgba(255,255,255,.95)','rgba(255,255,255,.65)')}
+    <div class="info">
+      <div class="nome">Copa ${inf.nome}</div>
+      <div class="meta">${c.times} times · ${inf.faixa}${
+        c.campeao ? ' · <b>encerrada</b>' : (proxima ? ' · próxima fase: '+proxima.nome+' na rodada '+proxima.rodada : '')}</div>
+    </div>
+    <div class="premio">${brl(inf.premio)}<span>Premiação</span></div>
+  </div>`;
+
+  const chave = `<div class="chave">${c.fases.map(f=>`
+    <div class="fase">
+      <h4>${esc(f.nome)} · <b>R${f.rodada}</b>${f.disputada?'':' <span class="pend">a jogar</span>'}</h4>
+      ${f.duelos.map(d=>{
+        const pend = (d.aPts==null || d.bPts==null);
+        const lado = (nome,seed,pts,venceu) =>
+          `<div class="lado ${venceu?'v':(pend?'':'x')}">
+             <span class="sd">${seed}º</span>
+             <span class="nm">${esc(nome)}</span>
+             <span class="pt">${pts==null?'—':num(pts)}</span>
+           </div>`;
+        return `<div class="duelo ${pend?'pend':''}">
+          ${lado(d.a,d.aSeed,d.aPts,d.venc===d.a)}
+          ${lado(d.b,d.bSeed,d.bPts,d.venc===d.b)}
+        </div>`;
+      }).join('')}
+    </div>`).join('')}
+    <div class="fase">
+      <h4>Campeão</h4>
+      ${c.campeao
+        ? `<div class="podio">${trofeu(52,'#c8901a','#8a6410')}
+             <div class="lab">Campeão · ${inf.nome}</div>
+             <div class="nm">${esc(c.campeao)}</div>
+             <div class="pr">${brl(inf.premio)}</div></div>`
+        : `<div class="aguarda">${trofeu(38,'#cfd6ca','#b9c1b4')}<br>
+             Aguardando<br>a decisão</div>`}
+    </div>
+  </div>`;
+
+  const R = D.copas.recopa || {rodada:25};
+  const vaga = (nome, quem) => quem
+    ? `<div class="lado">${esc(quem)}</div>`
+    : `<div class="lado vazia"><span>${nome}</span><br><small>a definir</small></div>`;
+  const recopa = `
+    <div class="recopa ${R.pronta?'':'aguardando'}">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        ${trofeu(38, R.pronta?'#e8c979':'#8b8578', R.pronta?'#c8901a':'#6b665c')}
+        <div style="flex:1"><div class="nome">Recopa</div>
+        <div class="meta">Entre os campeões das duas copas · rodada ${R.rodada}</div></div>
+        <div style="font-family:var(--f-tit);font-size:19px;font-weight:600;text-align:right">
+          ${brl(D.premios?D.premios.recopa:150)}
+          <span style="display:block;font-size:9.5px;letter-spacing:.08em;opacity:.7;font-weight:400">Premiação</span>
+        </div>
+      </div>
+      <div class="dupla">
+        ${vaga('Campeão da Libertadores', R.a)}
+        <span class="vs">×</span>
+        ${vaga('Campeão da Sul-Americana', R.b)}
+      </div>
+    </div>`;
+
+  return `${abas}${capa}<div class="card">
+    <div class="cab"><h2>Chaveamento</h2>
+      ${feitas>=total ? '<span class="selo pronto"><i class="pt"></i>Encerrada</span>'
+                      : '<span class="selo parcial"><i class="pt"></i>Parcial · '+feitas+' de '+total+' fases</span>'}
+    </div>
+    ${feitas>=total?'':`<div class="barra"><i style="width:${Math.round(feitas/total*100)}%"></i></div>`}
+    ${chave}
+    <div class="legenda">Quem fez mais pontos na rodada avança · empate: passa o melhor colocado no anual.
+      O número antes do nome é a posição do time dentro da copa. Times eliminados aparecem riscados.</div>
+  </div>${recopa}`;
+}
+
+function render(){
+  $('#sub').textContent = `Temporada ${D.temporada||2026} · após a rodada ${D.rodada}`;
+  $('#atz').innerHTML = `<span class="bolinha"></span>Atualizado em ${esc(D.atualizado||'—')}`;
+  $('#nav').innerHTML = ABAS.map(([k,t])=>
+    `<button class="${k===ABA?'on':''}" onclick="ABA='${k}';BUSCA='';ORDEM=null;render()">${t}</button>`).join('');
+  $('#tela').innerHTML = (ABA==='mitao') ? telaMitao()
+                       : (ABA==='copas') ? telaCopas()
+                       : (ABA==='rico')  ? telaMaisRico()
+                       : telaGrade(ABA);
+  $('#rodape').innerHTML = `Atualizado em ${esc(D.atualizado||'—')}<br>Dados oficiais da API do Cartola FC`;
+}
+render();
+</script>
+</body>
+</html>
