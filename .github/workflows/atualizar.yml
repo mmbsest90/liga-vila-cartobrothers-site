@@ -1,15 +1,19 @@
 name: Atualizar classificacao
 
+# Roda sozinho de 30 em 30 minutos para acompanhar a rodada em andamento,
+# e tambem pelo botao "Run workflow", quando voce quiser forcar.
+# Quando nao ha rodada rolando, ele confere e encerra em segundos.
 on:
   schedule:
-    - cron: "0 9 * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
     inputs:
       forcar:
-        description: "Recoletar todas as rodadas do zero"
+        description: "Recoletar todas as rodadas do zero (demora ~10 min)"
         type: boolean
         default: false
 
+# permite ao workflow gravar de volta no repositorio e publicar no Pages
 permissions:
   contents: write
   pages: write
@@ -32,14 +36,20 @@ jobs:
           python-version: "3.12"
 
       - name: Coletar e gerar a pagina
+        id: coleta
         run: |
           if [ "${{ inputs.forcar }}" = "true" ]; then
             python3 coletor.py --forcar
+          elif [ "$(date -u +%H)" = "09" ]; then
+            python3 coletor.py --revisar
           else
             python3 coletor.py
           fi
 
+      # Os passos abaixo so rodam quando algum numero mudou de verdade.
+      # A hora da atualizacao nao conta como mudanca.
       - name: Guardar os dados coletados
+        if: steps.coleta.outputs.mudou == 'sim'
         run: |
           git config user.name  "Liga Vila Cartobrothers"
           git config user.email "acoes@users.noreply.github.com"
@@ -47,17 +57,20 @@ jobs:
           if git diff --cached --quiet; then
             echo "Nada mudou nesta execucao."
           else
-            git commit -m "Atualiza classificacao"
+            git commit -m "Atualiza classificacao - $(TZ=America/Sao_Paulo date '+%d/%m/%Y %H:%M')"
             git push
           fi
 
       - name: Preparar a publicacao
+        if: steps.coleta.outputs.mudou == 'sim'
         uses: actions/configure-pages@v5
 
       - name: Empacotar a pagina
+        if: steps.coleta.outputs.mudou == 'sim'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
       - name: Publicar no GitHub Pages
+        if: steps.coleta.outputs.mudou == 'sim'
         uses: actions/deploy-pages@v4
