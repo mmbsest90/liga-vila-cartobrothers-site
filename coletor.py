@@ -534,6 +534,31 @@ def texto_whatsapp(maxrod, classif, mitao, capmito, rico, parcial=None):
     return "\n".join(L) + "\n"
 
 
+def parcial_nao_vale(times, pts, parcial):
+    """Diz por que a rodada em andamento NÃO deve entrar no site, ou None se pode.
+
+    Duas armadilhas da API, as duas já vistas na prática:
+
+    1. O mercado fecha algumas horas antes de a bola rolar. Nesse intervalo
+       ninguém pontuou e a rodada não existe ainda.
+    2. Pior: nesse mesmo intervalo a API responde /time/id/X/{rodada} com o
+       resultado da rodada ANTERIOR, igualzinho. Sem esta checagem, a rodada
+       passada entraria duas vezes e inflaria o anual inteiro.
+    """
+    tem = [t for t in times if pts[t["time_id"]].get(parcial) is not None]
+    if not tem:
+        return "a API não devolveu pontuação para nenhum time"
+    if not any(pts[t["time_id"]][parcial] for t in tem):
+        return "ninguém pontuou ainda"
+    if parcial > 1:
+        repetidos = sum(1 for t in tem
+                        if pts[t["time_id"]].get(parcial - 1) == pts[t["time_id"]][parcial])
+        if repetidos >= len(tem) * 0.9:
+            return (f"a API repetiu a pontuação da rodada {parcial - 1} "
+                    f"em {repetidos} de {len(tem)} times")
+    return None
+
+
 def sinalizar(nome, valor):
     """Devolve um resultado para o GitHub Actions, quando estiver rodando lá."""
     caminho = os.environ.get("GITHUB_OUTPUT")
@@ -724,19 +749,20 @@ def main():
         if falhas:
             log(f"  Consultas sem resposta: {falhas}")
 
-    # Mercado fecha algumas horas antes da bola rolar. Se ninguem pontuou ainda,
-    # a rodada nao comecou de verdade e nao deve aparecer no site.
-    if parcial and not any(pts[t["time_id"]].get(parcial) for t in times):
-        log(f"  A rodada {parcial} ainda não teve pontuação. Mostrando até a {parcial - 1}.")
-        for t in times:
-            pts[t["time_id"]].pop(parcial, None)
-            caps[t["time_id"]].pop(parcial, None)
-        escal.pop(parcial, None)
-        maxrod = max(0, parcial - 1)
-        parcial = None
-        if maxrod < 1:
-            log("  Nenhuma rodada disputada ainda.")
-            return
+    if parcial:
+        motivo = parcial_nao_vale(times, pts, parcial)
+        if motivo:
+            log(f"  A rodada {parcial} não entra: {motivo}.")
+            log(f"  Mostrando até a rodada {parcial - 1}.")
+            for t in times:
+                pts[t["time_id"]].pop(parcial, None)
+                caps[t["time_id"]].pop(parcial, None)
+            escal.pop(parcial, None)
+            maxrod = max(0, parcial - 1)
+            parcial = None
+            if maxrod < 1:
+                log("  Nenhuma rodada disputada ainda.")
+                return
 
     times_anual = [t for t in times if t["anual"]]
     classif = {k: classificar(times, pts, k, de, ate, maxrod) for k, (de, ate) in TURNOS.items()}
