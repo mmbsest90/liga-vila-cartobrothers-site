@@ -14,12 +14,14 @@ O que ele faz, nesta ordem:
 Só lê a API e escreve dentro da própria pasta. Não toca em mais nada do servidor.
 
 Uso:
-    python3 coletor.py              # coleta e gera
+    python3 coletor.py              # coleta o que falta e a rodada em andamento
+    python3 coletor.py --revisar    # relê também a última rodada já fechada
     python3 coletor.py --publicar   # coleta, gera e publica
     python3 coletor.py --forcar     # recoleta tudo do zero
 """
 
 import csv
+import hashlib
 import json
 import os
 import subprocess
@@ -371,7 +373,7 @@ def calc_mais_rico(times_anual, patr):
     return lista
 
 
-def montar_copas(times, times_anual, pts, maxrod):
+def montar_copas(times, times_anual, pts, maxrod, parcial=None):
     """Chaveamento das copas. chaveamento-manual.csv, se existir, tem prioridade."""
     if maxrod < 19:
         return {}
@@ -439,7 +441,8 @@ def montar_copas(times, times_anual, pts, maxrod):
                     duelos.append({"a": None, "aSeed": None, "aPts": None,
                                    "b": None, "bSeed": None, "bPts": None, "venc": None})
             fases.append({"nome": nome, "rodada": rod, "duelos": duelos,
-                          "disputada": rod <= maxrod and len(prox) == vagas // 2})
+                          "disputada": rod <= maxrod and rod != parcial
+                                        and len(prox) == vagas // 2})
             vivos = prox
             vagas //= 2
         campeao = None
@@ -504,8 +507,12 @@ def gravar_saidas(times, pts, caps, maxrod, classif, mitao, capmito, rico):
                    ["posicao", "time", "patrimonio", "rodada", "time_id"])
 
 
-def texto_whatsapp(maxrod, classif, mitao, capmito, rico):
-    L = ["*LIGA VILA CARTOBROTHERS*", f"Classificação após a rodada {maxrod}", ""]
+def texto_whatsapp(maxrod, classif, mitao, capmito, rico, parcial=None):
+    L = ["*LIGA VILA CARTOBROTHERS*"]
+    if parcial:
+        L += [f"⏱ RODADA {parcial} EM ANDAMENTO — números parciais", ""]
+    else:
+        L += [f"Classificação após a rodada {maxrod}", ""]
     m = ["1º", "2º", "3º", "4º", "5º"]
     L.append("*ANUAL*")
     for i, x in enumerate(classif["anual"][:5]):
@@ -527,8 +534,16 @@ def texto_whatsapp(maxrod, classif, mitao, capmito, rico):
     return "\n".join(L) + "\n"
 
 
+def sinalizar(nome, valor):
+    """Devolve um resultado para o GitHub Actions, quando estiver rodando lá."""
+    caminho = os.environ.get("GITHUB_OUTPUT")
+    if caminho:
+        with open(caminho, "a", encoding="utf-8") as f:
+            f.write(f"{nome}={valor}\n")
+
+
 def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico,
-                 copas, mensais, escalacao=None, total_anual=0):
+                 copas, mensais, escalacao=None, total_anual=0, parcial=None):
     modelo = os.path.join(BASE, "pagina-modelo.html")
     if not os.path.exists(modelo):
         log("  aviso: pagina-modelo.html não encontrado — página não gerada")
@@ -550,6 +565,7 @@ def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico,
     dados = {
         "temporada": TEMPORADA,
         "rodada": maxrod,
+        "parcial": parcial,
         "atualizado": agora(),
         "detalhe": detalhe,
         "anual": enxugar(classif["anual"]),
@@ -582,6 +598,18 @@ def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico,
         },
     }
 
+    # A hora da atualização muda a cada execução, então ela fica de fora da
+    # assinatura: o que interessa é se algum NÚMERO mudou.
+    assinado = dict(dados); assinado.pop("atualizado", None)
+    marca = hashlib.sha256(
+        json.dumps(assinado, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    antes = os.path.join(SAIDA, "assinatura.txt")
+    igual = (os.path.exists(antes)
+             and open(antes, encoding="utf-8").read().strip() == marca
+             and os.path.exists(os.path.join(SITE, "index.html")))
+    if igual:
+        return "igual"
+
     with open(modelo, encoding="utf-8") as f:
         html = f.read()
     html = html.replace("__DADOS__", json.dumps(dados, ensure_ascii=False, separators=(",", ":")))
@@ -589,6 +617,9 @@ def gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico,
     os.makedirs(SITE, exist_ok=True)
     with open(os.path.join(SITE, "index.html"), "w", encoding="utf-8") as f:
         f.write(html)
+    os.makedirs(SAIDA, exist_ok=True)
+    with open(antes, "w", encoding="utf-8") as f:
+        f.write(marca + "\n")
     return True
 
 
@@ -628,6 +659,7 @@ def publicar():
 
 def main():
     forcar = "--forcar" in sys.argv
+    revisar = "--revisar" in sys.argv
     quer_publicar = "--publicar" in sys.argv
 
     log("")
@@ -643,13 +675,22 @@ def main():
         sys.exit(2)
 
     rodada_atual = int(st.get("rodada_atual") or 0)
-    maxrod = max(0, rodada_atual - 1)
-    estado = {1: "aberto", 2: "fechado", 3: "manutenção", 4: "encerrado"}.get(
-        int(st.get("status_mercado") or 0), "?")
+    status = int(st.get("status_mercado") or 0)
+    estado = {1: "aberto", 2: "fechado", 3: "manutenção", 4: "encerrado"}.get(status, "?")
+
+    # Mercado aberto significa que a rodada ainda vai comecar, entao a ultima
+    # valida e a anterior. Fechado significa jogos rolando: a rodada entra como
+    # PARCIAL e volta a ser coletada a cada execucao ate o mercado reabrir.
+    if status == 1:
+        maxrod = max(0, rodada_atual - 1)
+        parcial = None
+    else:
+        maxrod = max(0, rodada_atual)
+        parcial = rodada_atual if status in (2, 3) else None
 
     log("")
     log(f"  Rodada atual....: {rodada_atual} (mercado {estado})")
-    log(f"  Já disputadas...: 1 a {maxrod}")
+    log(f"  Considerando....: 1 a {maxrod}" + (f"  (a {parcial} é parcial)" if parcial else ""))
     log(f"  Times cadastrados: {len(times)}")
 
     if maxrod < 1:
@@ -661,8 +702,13 @@ def main():
         if forcar else carregar_cache(times, escal)
     patr = {}
 
+    # A rodada em andamento é sempre refeita. As já fechadas só voltam à API se
+    # ficou time sem pontuação ou se for a revisão diária (--revisar), que pega
+    # eventual correção de placar feita pelo Cartola depois do apito final.
     faltando = [r for r in range(1, maxrod + 1)
-                if r == maxrod or sum(1 for t in times if r in pts[t["time_id"]]) < len(times)]
+                if r == parcial
+                or (revisar and r == maxrod)
+                or sum(1 for t in times if r in pts[t["time_id"]]) < len(times)]
 
     if not faltando:
         log("  Nada a coletar: tudo em dia.")
@@ -678,13 +724,27 @@ def main():
         if falhas:
             log(f"  Consultas sem resposta: {falhas}")
 
+    # Mercado fecha algumas horas antes da bola rolar. Se ninguem pontuou ainda,
+    # a rodada nao comecou de verdade e nao deve aparecer no site.
+    if parcial and not any(pts[t["time_id"]].get(parcial) for t in times):
+        log(f"  A rodada {parcial} ainda não teve pontuação. Mostrando até a {parcial - 1}.")
+        for t in times:
+            pts[t["time_id"]].pop(parcial, None)
+            caps[t["time_id"]].pop(parcial, None)
+        escal.pop(parcial, None)
+        maxrod = max(0, parcial - 1)
+        parcial = None
+        if maxrod < 1:
+            log("  Nenhuma rodada disputada ainda.")
+            return
+
     times_anual = [t for t in times if t["anual"]]
     classif = {k: classificar(times, pts, k, de, ate, maxrod) for k, (de, ate) in TURNOS.items()}
     mitao = calc_mitao(times_anual, pts, maxrod)
     capmito = calc_capitao_mito(times_anual, caps, maxrod)
     rico = calc_mais_rico(times_anual, patr)
     mensais = calc_mensais(times_anual, pts, maxrod)
-    copas = montar_copas(times, times_anual, pts, maxrod)
+    copas = montar_copas(times, times_anual, pts, maxrod, parcial)
 
     gravar_saidas(times, pts, caps, maxrod, classif, mitao, capmito, rico)
     if mensais:
@@ -708,11 +768,11 @@ def main():
                    ["rodada", "atleta_id", "apelido", "posicao", "clube", "escalacoes", "pontos"])
 
     with open(os.path.join(SAIDA, "resumo-whatsapp.txt"), "w", encoding="utf-8") as f:
-        f.write(texto_whatsapp(maxrod, classif, mitao, capmito, rico))
+        f.write(texto_whatsapp(maxrod, classif, mitao, capmito, rico, parcial))
 
     escalacao = montar_escalacao(escal, len(times_anual))
     ok = gerar_pagina(maxrod, times, pts, caps, classif, mitao, capmito, rico,
-                      copas, mensais, escalacao, len(times_anual))
+                      copas, mensais, escalacao, len(times_anual), parcial)
 
     log("")
     log("  " + "-" * 50)
@@ -738,8 +798,11 @@ def main():
                 log(f"  {comp.capitalize():<14}: {feitas}/{len(c['fases'])} fases"
                     + (f" — campeão: {c['campeao']}" if c["campeao"] else ""))
     log("  " + "-" * 50)
-    if ok:
+    if ok == "igual":
+        log("  Nenhum número mudou desde a última execução. Página mantida como está.")
+    elif ok:
         log("  Página gerada em site/index.html")
+    sinalizar("mudou", "nao" if ok == "igual" else "sim")
     if quer_publicar:
         publicar()
     log("")

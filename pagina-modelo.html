@@ -282,6 +282,24 @@
   .tpct{color:var(--dim);font-variant-numeric:tabular-nums}
   .escavazio{padding:16px 14px;font-size:12.5px;color:var(--dim);line-height:1.6}
 
+  /* rodada em andamento: faixa de aviso e marcacoes laranja piscando */
+  .emjogo{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;
+          padding:11px 14px;border-radius:10px;font-size:13px;line-height:1.5;
+          background:var(--greenL);border:1px solid var(--green);color:var(--txt)}
+  .emjogo b{color:var(--green)}
+  .pulso{flex:0 0 auto;width:9px;height:9px;margin-top:5px;border-radius:50%;
+         background:var(--green);animation:bate 1.4s ease-in-out infinite}
+  .pisca{display:inline-block;width:5px;height:5px;margin-left:4px;border-radius:50%;
+         background:var(--green);vertical-align:middle;animation:bate 1.4s ease-in-out infinite}
+  @keyframes bate{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+  th.viva{color:var(--green)!important;background:var(--greenL)!important}
+  tr.emcurso{background:var(--greenL)}
+  .badge.viva{background:var(--green);color:#fff}
+  .chip.viva{border-color:var(--green);color:var(--green);font-weight:600}
+  .chip.on.viva{background:var(--green);color:#fff}
+  .chip.on.viva .pisca{background:#fff}
+  @media print{.pulso,.pisca{animation:none}}
+
   /* barra de acoes fixa no fim de toda aba */
   .acoes{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:4px;
          padding:12px 14px;background:var(--card2);border:1px solid var(--line);border-radius:10px}
@@ -488,8 +506,10 @@ function grade(comp){
 
   let h = `<div class="rolagem"><table><thead><tr>
     <th class="fix1 pos">#</th><th class="fix2">Time</th>
-    ${rs.map(r=>`<th class="n ${r===ult?'ult':''}" style="cursor:pointer"
-       onclick="ORDEM=(ORDEM===${r}?null:${r});render()" title="ordenar por esta rodada">R${r}</th>`).join('')}
+    ${rs.map(r=>`<th class="n ${r===ult?'ult':''} ${r===D.parcial?'viva':''}" style="cursor:pointer"
+       onclick="ORDEM=(ORDEM===${r}?null:${r});render()"
+       title="${r===D.parcial?'rodada em andamento · parcial':'ordenar por esta rodada'}"
+       >R${r}${r===D.parcial?'<i class="pisca"></i>':''}</th>`).join('')}
     <th class="n tot">Total</th>${ehCap?'':'<th class="n">Méd</th>'}
     <th class="n">Dif. 1º</th><th class="n">Dif. G3</th>
   </tr></thead><tbody>`;
@@ -670,7 +690,9 @@ function desenharArte(rod){
   g.fillStyle=BR; g.font=F(50,'600');
   g.fillText('LIGA VILA CARTOBROTHERS', S/2, 72);
   g.fillStyle='#b9c2b4'; g.font=R(28,500);
-  g.fillText(`RODADA ${rod}  ·  TEMPORADA ${D.temporada||2026}`, S/2, 116);
+  g.fillText(rod===D.parcial
+    ? `RODADA ${rod}  ·  PARCIAL, AINDA EM JOGO`
+    : `RODADA ${rod}  ·  TEMPORADA ${D.temporada||2026}`, S/2, 116);
 
   const cxE=S*0.265, cxD=S*0.735;
 
@@ -793,13 +815,15 @@ function telaRodada(){
   setTimeout(() => desenharArte(rod), 30);
 
   return `<div class="card">
-    <div class="cab"><h2>Bola cheia e bola murcha</h2></div>
+    <div class="cab"><h2>Bola cheia e bola murcha</h2>${
+      rod===D.parcial?'<span class="selo parcial"><i class="pt"></i>Rodada em andamento</span>':''}</div>
     <div class="hint">Arte pronta para mandar no grupo · entre os ${dd.n} inscritos no anual</div>
     <div class="painel">
       <div class="plinha">
         <span class="rot">Rodada</span>
-        ${rods.map(r=>`<button class="chip ${r===rod?'on':''}"
-           onclick="window.__rodArte=${r};render()">${r}</button>`).join('')}
+        ${rods.map(r=>`<button class="chip ${r===rod?'on':''} ${r===D.parcial?'viva':''}"
+           title="${r===D.parcial?'rodada em andamento':''}"
+           onclick="window.__rodArte=${r};render()">${r}${r===D.parcial?'<i class="pisca"></i>':''}</button>`).join('')}
       </div>
     </div>
     <div class="arte">
@@ -885,10 +909,12 @@ function telaMitao(){
       <th class="pos">Rod</th><th>Time</th><th class="n">Pontos</th></tr></thead><tbody>
     ${m.map(x=>{
       const eRec = rec && x.rodada===rec.rodada;
-      return `<tr class="${eRec?'r1':''}">
-        <td class="pos">${x.rodada}</td>
+      const viva = x.rodada===D.parcial;
+      return `<tr class="${eRec?'r1':''}${viva?' emcurso':''}">
+        <td class="pos">${x.rodada}${viva?'<i class="pisca"></i>':''}</td>
         <td class="time">${esc(x.time)}${eRec?'<span class="medalha">🏅</span>':''}</td>
-        <td class="n tot">${num(x.pontos)}${eRec?' <span class="badge">Mitada do Ano</span>':''}</td></tr>`;
+        <td class="n tot">${num(x.pontos)}${eRec?' <span class="badge">Mitada do Ano</span>':''}${
+          viva?' <span class="badge viva">em jogo</span>':''}</td></tr>`;
     }).join('')}
     </tbody></table></div></div>`;
 }
@@ -969,8 +995,8 @@ function telaCopas(){
     <div class="premio">${brl(inf.premio)}<span>Premiação</span></div>
   </div>`;
 
-  // fase em andamento = a primeira nao disputada, se ela cai na rodada que esta rolando
-  const emJogo = D.rodada + 1;   // a rodada atual do Cartola, ainda sem pontos
+  // fase em andamento: a rodada parcial, se houver; senao a proxima a ser jogada
+  const emJogo = D.parcial || (D.rodada + 1);
   const chave = `<div class="chave">${c.fases.map(f=>{
     const agora = !f.disputada && f.rodada === emJogo;
     return `
@@ -1041,18 +1067,32 @@ function telaCopas(){
   </div>${recopa}`;
 }
 
+/* faixa de aviso quando a rodada ainda esta rolando */
+function avisoParcial(){
+  if(!D.parcial) return '';
+  return `<div class="emjogo">
+    <span class="pulso"></span>
+    <div><b>Rodada ${D.parcial} em andamento.</b>
+      Tudo nesta página já conta a rodada ${D.parcial} e muda a cada jogo.
+      Os números só valem de vez quando a rodada fechar.</div>
+  </div>`;
+}
+
 function render(){
-  $('#sub').textContent = `Temporada ${D.temporada||2026} · após a rodada ${D.rodada}`;
+  $('#sub').textContent = D.parcial
+    ? `Temporada ${D.temporada||2026} · rodada ${D.parcial} em andamento`
+    : `Temporada ${D.temporada||2026} · após a rodada ${D.rodada}`;
   $('#atz').innerHTML = `<span class="bolinha"></span>Atualizado em ${esc(D.atualizado||'—')}`
     + `<button class="recarregar rodapenao" onclick="recarregar()" title="Buscar a versão mais recente">⟳</button>`;
   $('#nav').innerHTML = abas().map(([k,t])=>
     `<button class="${k===ABA?'on':''}" onclick="ABA='${k}';BUSCA='';ORDEM=null;render()">${t}</button>`).join('');
-  $('#tela').innerHTML = (ABA==='rodada')? telaRodada()
+  $('#tela').innerHTML = avisoParcial() +
+                         ((ABA==='rodada')? telaRodada()
                        : (ABA==='mensal')? telaMensal()
                        : (ABA==='mitao') ? telaMitao()
                        : (ABA==='copas') ? telaCopas()
                        : (ABA==='rico')  ? telaMaisRico()
-                       : telaGrade(ABA);
+                       : telaGrade(ABA));
   $('#rodape').innerHTML = `Atualizado em ${esc(D.atualizado||'—')}<br>Dados oficiais da API do Cartola FC`;
 }
 render();
