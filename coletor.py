@@ -71,6 +71,12 @@ RODADA_RECOPA = 25
 
 CAPITAO_MULT = 1.5    # no Cartola o capitão vale 1,5x, não 2x
 
+# Quanto tempo depois do apito inicial a partida certamente já acabou. Serve
+# para saber que um titular não entrou em campo — antes disso ele pode apenas
+# ainda não ter entrado. Folgado de propósito: atrasar a substituição não
+# estraga nada, antecipá-la estragaria.
+JOGO_ACABOU = 3 * 60 * 60
+
 # posições do Cartola e quantos entram na escalação mais popular (4-3-3)
 POSICOES = {1: "GOL", 2: "LAT", 3: "ZAG", 4: "MEI", 5: "ATA", 6: "TEC"}
 FORMACAO = [(1, 1), (2, 2), (3, 2), (4, 3), (5, 3), (6, 1)]
@@ -250,6 +256,180 @@ def coletar(times, pts, caps, patr, rodadas, escal=None, clubes=None):
             time.sleep(PAUSA)
         log(f"    rodada {rod:2d}: {ok}/{len(times)} times")
     return feito, falhas
+
+
+# ------------------------------------------------------------ parcial ao vivo
+
+def buscar_pontuados(rodada):
+    """Jogadores que já pontuaram na rodada em andamento.
+
+    Devolve {atleta_id: pontuacao} — ou None se a API não tiver parcial desta
+    rodada, e {} se a rodada ainda não teve ninguém pontuando.
+    """
+    d = buscar("/atletas/pontuados")
+    if not isinstance(d, dict):
+        return None
+    if int(d.get("rodada") or 0) != rodada:
+        return None                      # a parcial é de outra rodada
+    atletas = d.get("atletas")
+    if not isinstance(atletas, dict):
+        return None
+    marcados = {}
+    for k, a in atletas.items():
+        try:
+            marcados[int(k)] = float(a.get("pontuacao") or 0)
+        except (TypeError, ValueError):
+            continue
+    return marcados
+
+
+def buscar_partidas(rodada):
+    """Quando começou o jogo de cada clube nesta rodada: {clube_id: timestamp}."""
+    d = buscar("/partidas")
+    if not isinstance(d, dict) or int(d.get("rodada") or 0) != rodada:
+        return {}
+    inicio = {}
+    for p in d.get("partidas") or []:
+        ts = p.get("timestamp")
+        if not ts:
+            continue
+        for lado in ("clube_casa_id", "clube_visitante_id"):
+            if p.get(lado):
+                inicio[int(p[lado])] = int(ts)
+    return inicio
+
+
+def escalar_ao_vivo(d, marcados, inicio_jogo, agora_ts):
+    """Monta o time que está pontuando de fato, com as regras do Cartola.
+
+    Devolve (lista de (atleta, pontuação, é_capitão), total).
+
+    Duas substituições automáticas existem, e as duas mudam o total:
+
+    BANCO DE RESERVAS — se um titular não entra em campo, o reserva da mesma
+    posição entra no lugar dele, desde que o reserva tenha feito ao menos 0,1.
+    Só dá para saber que alguém "não entrou" depois que o jogo do clube dele
+    acabou; antes disso ele pode simplesmente ainda não ter começado a jogar.
+    Por isso a ausência só conta como confirmada passadas JOGO_ACABOU horas do
+    início da partida — errar para o lado tardio é inofensivo, para o lado
+    cedo seria substituir alguém que ainda ia entrar.
+
+    RESERVA DE LUXO — um reserva escolhido que entra no lugar do titular da
+    mesma posição com a MENOR pontuação, se a dele for maior. Só vale se todos
+    os titulares daquela posição já jogaram. Em caso de empate na menor
+    pontuação, sai o capitão, comparando a pontuação crua, sem o 1,5x.
+
+    Nos dois casos, se quem sai é o capitão, a braçadeira passa para quem entra.
+    """
+    titulares = [a for a in (d.get("atletas") or []) if a.get("atleta_id")]
+    banco = {}
+    for a in (d.get("reservas") or []):
+        if a.get("atleta_id"):
+            banco[a.get("posicao_id")] = a
+    cap_id = d.get("capitao_id")
+    rl_id = d.get("reserva_luxo_id")
+
+    def jogou(a):
+        return a.get("atleta_id") in marcados
+
+    def nota(a):
+        return marcados.get(a.get("atleta_id"), 0.0)
+
+    def ausencia_confirmada(a):
+        if jogou(a):
+            return False
+        ts = inicio_jogo.get(a.get("clube_id"))
+        return bool(ts) and (agora_ts - ts) > JOGO_ACABOU
+
+    time_final = list(titulares)
+    capitao = cap_id
+    banco_usado = set()
+
+    # 1) banco de reservas: um por posição, para quem não entrou em campo
+    for pos, reserva in banco.items():
+        if not jogou(reserva) or nota(reserva) < 0.1:
+            continue                       # reserva que zerou ou negativou é ignorado
+        faltosos = [a for a in time_final
+                    if a.get("posicao_id") == pos and ausencia_confirmada(a)]
+        if not faltosos:
+            continue
+        # dois faltosos na mesma posição: sai o do jogo que acabou primeiro
+        faltosos.sort(key=lambda a: inicio_jogo.get(a.get("clube_id"), 0))
+        sai = faltosos[0]
+        time_final[time_final.index(sai)] = reserva
+        banco_usado.add(reserva.get("atleta_id"))
+        if sai.get("atleta_id") == capitao:
+            capitao = reserva.get("atleta_id")
+
+    # 2) reserva de luxo: só se todos os titulares da posição já jogaram
+    rl = next((a for a in banco.values() if a.get("atleta_id") == rl_id), None)
+    if rl and rl_id not in banco_usado and jogou(rl):
+        pos = rl.get("posicao_id")
+        mesma = [a for a in time_final if a.get("posicao_id") == pos]
+        if mesma and all(jogou(a) for a in mesma):
+            # empate na menor pontuação: o capitão sai primeiro
+            sai = min(mesma, key=lambda a: (nota(a), a.get("atleta_id") != capitao))
+            if nota(rl) > nota(sai):
+                time_final[time_final.index(sai)] = rl
+                if sai.get("atleta_id") == capitao:
+                    capitao = rl.get("atleta_id")
+
+    escalacao = [(a, nota(a), a.get("atleta_id") == capitao) for a in time_final]
+    total = sum(p * (CAPITAO_MULT if ehcap else 1) for _, p, ehcap in escalacao)
+    return escalacao, total
+
+
+def coletar_ao_vivo(times, rodada, marcados, pts, caps, patr, escal, clubes):
+    """Pontuação parcial da rodada em andamento, time por time.
+
+    A API não devolve parcial pronta: durante a rodada, /time/id/X/{rodada}
+    responde com o total da rodada ANTERIOR — foi assim que a rodada 21 quase
+    entrou duas vezes. O que ela dá é a escalação travada de cada time e a
+    lista de quem já pontuou. A soma é nossa.
+    """
+    inicio_jogo = buscar_partidas(rodada)
+    agora_ts = int(time.time())
+    escal[rodada] = {}
+    ok = falhas = trocas = 0
+
+    for t in times:
+        d = buscar(f"/time/id/{t['time_id']}")
+        if not d or not isinstance(d.get("atletas"), list):
+            falhas += 1
+            time.sleep(PAUSA)
+            continue
+
+        escalacao, total = escalar_ao_vivo(d, marcados, inicio_jogo, agora_ts)
+        titulares = {a.get("atleta_id") for a in d.get("atletas") or []}
+        trocas += sum(1 for a, _, _ in escalacao if a.get("atleta_id") not in titulares)
+
+        pts[t["time_id"]][rodada] = n2(total)
+        for a, p, ehcap in escalacao:
+            if ehcap:
+                caps[t["time_id"]][rodada] = (a.get("apelido", ""), n2(p))
+            if t["anual"]:
+                aid = a.get("atleta_id")
+                e = escal[rodada].setdefault(aid, {
+                    "apelido": a.get("apelido", ""),
+                    "posicao": POSICOES.get(a.get("posicao_id"), "?"),
+                    "clube": (clubes or {}).get(str(a.get("clube_id")), ""),
+                    "pontos": n2(p),
+                    "n": 0,
+                })
+                e["n"] += 1
+                e["pontos"] = n2(p)
+
+        pv = (d.get("time") or {}).get("patrimonio")
+        if pv is None:
+            pv = d.get("patrimonio")
+        if pv is not None:
+            patr[t["time_id"]] = {"valor": n2(pv), "rodada": rodada}
+        ok += 1
+        time.sleep(PAUSA)
+
+    log(f"    parcial da rodada {rodada}: {ok}/{len(times)} times"
+        f" · {len(marcados)} jogadores pontuaram · {trocas} substituições aplicadas")
+    return ok, falhas
 
 
 # ----------------------------------------------------------------- cálculos
@@ -727,27 +907,51 @@ def main():
         if forcar else carregar_cache(times, escal)
     patr = {}
 
-    # A rodada em andamento é sempre refeita. As já fechadas só voltam à API se
-    # ficou time sem pontuação ou se for a revisão diária (--revisar), que pega
-    # eventual correção de placar feita pelo Cartola depois do apito final.
-    faltando = [r for r in range(1, maxrod + 1)
-                if r == parcial
-                or (revisar and r == maxrod)
+    # Antes de mais nada: a rodada em andamento só vale se a API confirmar que
+    # já tem jogador pontuando nela. Sem isso, o site fica na rodada fechada.
+    marcados = None
+    if parcial:
+        marcados = buscar_pontuados(parcial)
+        if marcados is None:
+            log(f"  A API não tem parcial da rodada {parcial}. Mostrando até a {parcial - 1}.")
+        elif not marcados:
+            log(f"  Ninguém pontuou na rodada {parcial} ainda. Mostrando até a {parcial - 1}.")
+        if not marcados:
+            marcados = None
+            maxrod = max(0, parcial - 1)
+            parcial = None
+            if maxrod < 1:
+                log("  Nenhuma rodada disputada ainda.")
+                return
+
+    fechadas = parcial - 1 if parcial else maxrod
+
+    # As rodadas fechadas só voltam à API se ficou time sem pontuação ou se for
+    # a revisão diária (--revisar), que pega eventual correção de placar feita
+    # pelo Cartola depois do apito final.
+    faltando = [r for r in range(1, fechadas + 1)
+                if (revisar and r == fechadas)
                 or sum(1 for t in times if r in pts[t["time_id"]]) < len(times)]
 
-    if not faltando:
-        log("  Nada a coletar: tudo em dia.")
-    else:
-        log(f"  A coletar.......: rodada(s) {', '.join(map(str, faltando))}")
-        log("")
-        clubes = {}
+    clubes = {}
+    if faltando or parcial:
         dc = buscar("/clubes")
         if isinstance(dc, dict):
             for cid, c in dc.items():
                 clubes[str(cid)] = (c.get("abreviacao") or c.get("nome") or "").strip()
+
+    if faltando:
+        log(f"  A coletar.......: rodada(s) {', '.join(map(str, faltando))}")
+        log("")
         feito, falhas = coletar(times, pts, caps, patr, faltando, escal, clubes)
         if falhas:
             log(f"  Consultas sem resposta: {falhas}")
+    elif not parcial:
+        log("  Nada a coletar: tudo em dia.")
+
+    if parcial:
+        log("")
+        coletar_ao_vivo(times, parcial, marcados, pts, caps, patr, escal, clubes)
 
     if parcial:
         motivo = parcial_nao_vale(times, pts, parcial)
