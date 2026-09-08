@@ -53,6 +53,10 @@
   nav button{background:transparent;color:var(--dim);border:0;border-bottom:2.5px solid transparent;
     padding:10px 13px;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
   nav button.on{color:var(--green);border-bottom-color:var(--green)}
+  /* competicao ja encerrada: dourado, com um trofeuzinho antes do nome */
+  nav button.fim{color:var(--ouro)}
+  nav button.fim.on{color:var(--ouro);border-bottom-color:var(--ouro)}
+  nav button.fim::before{content:"\1F3C6";margin-right:5px;font-size:11px}
 
   .card{background:var(--card);border:1px solid var(--line);border-radius:11px;
         padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
@@ -235,6 +239,12 @@
   .recopa .lado.vazia small{font-size:10.5px;opacity:.8;font-family:var(--f-tit);letter-spacing:.06em;
                             text-transform:uppercase}
   .recopa .vs{font-family:var(--f-tit);opacity:.6;font-size:15px}
+  /* recopa ja decidida: o campeao em dourado, o outro apagado */
+  .recopa .lado{display:flex;align-items:center;gap:9px}
+  .recopa .lado .pl{font-variant-numeric:tabular-nums;font-family:var(--f-tit);font-size:15px}
+  .recopa .lado.venceu{background:var(--ouro);color:#2b1d00}
+  .recopa .lado.perdeu{opacity:.55}
+  .recopa .lado .taca{font-size:15px;line-height:1}
 
   /* ---- aba Rodada / arte ---- */
   .arte{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
@@ -1034,24 +1044,37 @@ function telaCopas(){
   </div>`;
 
   const R = D.copas.recopa || {rodada:25};
-  const vaga = (nome, quem) => quem
-    ? `<div class="lado">${esc(quem)}</div>`
-    : `<div class="lado vazia"><span>${nome}</span><br><small>a definir</small></div>`;
+  const decidida = !!R.campeao;
+  const vaga = (nome, quem, pontos) => {
+    if(!quem) return `<div class="lado vazia"><span>${nome}</span><br><small>a definir</small></div>`;
+    const venceu = decidida && R.campeao === quem;
+    return `<div class="lado ${venceu?'venceu':(decidida?'perdeu':'')}">
+      <span>${esc(quem)}</span>
+      ${pontos!=null?`<b class="pl">${num(pontos)}</b>`:''}
+      ${venceu?'<span class="taca">🏆</span>':''}</div>`;
+  };
+  const situacaoRecopa = !R.pronta
+    ? `<div class="meta">Entre os campeões das duas copas · rodada ${R.rodada}</div>`
+    : R.emJogo
+      ? `<div class="meta">Rodada ${R.rodada} em andamento · parcial</div>`
+      : decidida
+        ? `<div class="meta">Campeão: <b>${esc(R.campeao)}</b>${
+             R.aPts===R.bPts ? ' · empate na rodada, decidido pela colocação no anual' : ''}</div>`
+        : `<div class="meta">Decide na rodada ${R.rodada}</div>`;
   const recopa = `
-    <div class="recopa ${R.pronta?'':'aguardando'}">
+    <div class="recopa ${R.pronta?'':'aguardando'} ${decidida?'decidida':''}">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         ${trofeu(38, R.pronta?'#e8c979':'#8b8578', R.pronta?'#c8901a':'#6b665c')}
-        <div style="flex:1"><div class="nome">Recopa</div>
-        <div class="meta">Entre os campeões das duas copas · rodada ${R.rodada}</div></div>
+        <div style="flex:1"><div class="nome">Recopa</div>${situacaoRecopa}</div>
         <div style="font-family:var(--f-tit);font-size:19px;font-weight:600;text-align:right">
           ${brl(D.premios?D.premios.recopa:150)}
           <span style="display:block;font-size:9.5px;letter-spacing:.08em;opacity:.7;font-weight:400">Premiação</span>
         </div>
       </div>
       <div class="dupla">
-        ${vaga('Campeão da Libertadores', R.a)}
+        ${vaga('Campeão da Libertadores', R.a, R.aPts)}
         <span class="vs">×</span>
-        ${vaga('Campeão da Sul-Americana', R.b)}
+        ${vaga('Campeão da Sul-Americana', R.b, R.bPts)}
       </div>
     </div>`;
 
@@ -1084,8 +1107,12 @@ function render(){
     : `Temporada ${D.temporada||2026} · após a rodada ${D.rodada}`;
   $('#atz').innerHTML = `<span class="bolinha"></span>Atualizado em ${esc(D.atualizado||'—')}`
     + `<button class="recarregar rodapenao" onclick="recarregar()" title="Buscar a versão mais recente">⟳</button>`;
-  $('#nav').innerHTML = abas().map(([k,t])=>
-    `<button class="${k===ABA?'on':''}" onclick="ABA='${k}';BUSCA='';ORDEM=null;render()">${t}</button>`).join('');
+  $('#nav').innerHTML = abas().map(([k,t])=>{
+    const fim = COMPS[k] && situacao(k).pronto;   // disputa já encerrada
+    return `<button class="${k===ABA?'on':''}${fim?' fim':''}"
+      ${fim?'title="disputa encerrada"':''}
+      onclick="ABA='${k}';BUSCA='';ORDEM=null;render()">${t}</button>`;
+  }).join('');
   $('#tela').innerHTML = avisoParcial() +
                          ((ABA==='rodada')? telaRodada()
                        : (ABA==='mensal')? telaMensal()

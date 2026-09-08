@@ -206,6 +206,28 @@ def carregar_cache(times, escal):
     return pts, caps
 
 
+def carregar_patrimonio(times):
+    """Patrimônio em cartoletas da última vez que cada time foi consultado.
+
+    A API só devolve o patrimônio junto com a escalação, então ele só aparece
+    nas rodadas que a gente busca. Sem guardar entre execuções, toda rodagem
+    que não precisava coletar nada deixava a aba Mais Rico vazia.
+    """
+    validos = {t["time_id"] for t in times}
+    patr = {}
+    for r in ler_csv(os.path.join(SAIDA, "mais-rico.csv")):
+        tid = (r.get("time_id") or "").strip()
+        valor = de_br(r.get("patrimonio"))
+        if tid not in validos or valor is None:
+            continue
+        try:
+            rod = int(r.get("rodada") or 0)
+        except (TypeError, ValueError):
+            rod = 0
+        patr[tid] = {"valor": valor, "rodada": rod}
+    return patr
+
+
 def coletar(times, pts, caps, patr, rodadas, escal=None, clubes=None):
     total = len(rodadas) * len(times)
     feito = falhas = 0
@@ -627,15 +649,55 @@ def montar_copas(times, times_anual, pts, maxrod, parcial=None):
             vagas //= 2
         campeao = None
         if fases and fases[-1]["nome"] == "Final" and fases[-1]["disputada"] and len(vivos) == 1:
-            campeao = vivos[0]["time"]
-        copas[comp] = {"times": n, "fases": fases, "campeao": campeao}
+            campeao = vivos[0]
+        copas[comp] = {"times": n, "fases": fases,
+                       "campeao": campeao["time"] if campeao else None,
+                       "campeaoId": campeao["id"] if campeao else None}
 
     if copas:
-        cl = copas.get("libertadores", {}).get("campeao")
-        cs = copas.get("sulamericana", {}).get("campeao")
-        copas["recopa"] = {"a": cl, "b": cs, "rodada": RODADA_RECOPA,
-                           "pronta": bool(cl and cs)}
+        copas["recopa"] = montar_recopa(copas, pts, apos19, maxrod, parcial)
     return copas
+
+
+def montar_recopa(copas, pts, apos19, maxrod, parcial=None):
+    """Jogo único entre os campeões das duas copas, na rodada RODADA_RECOPA.
+
+    Os dois vêm de chaves diferentes, então o seed de cada copa não serve de
+    desempate. Em caso de empate na rodada, passa quem estava melhor no ANUAL
+    ao fim do 1º turno — o mesmo critério que definiu as copas.
+    """
+    rod = RODADA_RECOPA
+    lados = []
+    for comp in ("libertadores", "sulamericana"):
+        c = copas.get(comp) or {}
+        lados.append({"time": c.get("campeao"), "id": c.get("campeaoId"), "comp": comp})
+    a, b = lados
+
+    rec = {"a": a["time"], "b": b["time"], "rodada": rod,
+           "pronta": bool(a["time"] and b["time"]),
+           "aPts": None, "bPts": None, "campeao": None,
+           "disputada": False, "emJogo": False}
+    if not rec["pronta"]:
+        return rec
+
+    rec["aPts"] = pts.get(a["id"], {}).get(rod)
+    rec["bPts"] = pts.get(b["id"], {}).get(rod)
+    rec["emJogo"] = (rod == parcial)
+
+    if rec["aPts"] is None or rec["bPts"] is None or rod > maxrod:
+        return rec
+
+    if rec["aPts"] > rec["bPts"]:
+        venc = a
+    elif rec["bPts"] > rec["aPts"]:
+        venc = b
+    else:
+        posicao = {x["time_id"]: x["posicao"] for x in apos19}
+        grande = len(posicao) + 1
+        venc = a if posicao.get(a["id"], grande) <= posicao.get(b["id"], grande) else b
+    rec["campeao"] = venc["time"]
+    rec["disputada"] = not rec["emJogo"]
+    return rec
 
 
 # ------------------------------------------------------------------- saídas
@@ -905,7 +967,7 @@ def main():
     escal = {}
     pts, caps = ({t["time_id"]: {} for t in times}, {t["time_id"]: {} for t in times}) \
         if forcar else carregar_cache(times, escal)
-    patr = {}
+    patr = {} if forcar else carregar_patrimonio(times)
 
     # Antes de mais nada: a rodada em andamento só vale se a API confirmar que
     # já tem jogador pontuando nela. Sem isso, o site fica na rodada fechada.
