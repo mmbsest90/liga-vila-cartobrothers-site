@@ -206,6 +206,56 @@ def carregar_cache(times, escal):
     return pts, caps
 
 
+def ler_parciais():
+    """Rodadas cujo valor gravado veio da parcial ao vivo, não do número oficial.
+
+    Enquanto uma rodada está rolando, a pontuação que guardamos é a nossa
+    soma. Quando ela fecha, o Cartola passa a ter o número oficial — que pode
+    diferir, porque substituição de banco só se confirma no apito final. Sem
+    esta lista, a rodada ficava congelada no parcial para sempre.
+    """
+    caminho = os.path.join(SAIDA, "parciais.txt")
+    if not os.path.exists(caminho):
+        return set()
+    rodadas = set()
+    with open(caminho, encoding="utf-8") as f:
+        for linha in f:
+            linha = linha.strip()
+            if linha.isdigit():
+                rodadas.add(int(linha))
+    return rodadas
+
+
+def gravar_parciais(rodadas):
+    os.makedirs(SAIDA, exist_ok=True)
+    with open(os.path.join(SAIDA, "parciais.txt"), "w", encoding="utf-8") as f:
+        for r in sorted(rodadas):
+            f.write(f"{r}\n")
+
+
+def revisao_pendente():
+    """Se ainda não houve revisão completa hoje, no horário de Brasília.
+
+    Antes isso dependia de a execução cair na hora 09 UTC. Como o GitHub
+    atrasa e espaça as execuções agendadas, quase nunca caía, e a revisão
+    simplesmente não acontecia. Agora quem decide é a data registrada.
+    """
+    caminho = os.path.join(SAIDA, "ultima-revisao.txt")
+    if not os.path.exists(caminho):
+        return True
+    return open(caminho, encoding="utf-8").read().strip() != hoje_br()
+
+
+def hoje_br():
+    return datetime.now(FUSO).strftime("%Y-%m-%d")
+
+
+def marcar_revisao():
+    os.makedirs(SAIDA, exist_ok=True)
+    with open(os.path.join(SAIDA, "ultima-revisao.txt"), "w", encoding="utf-8") as f:
+        f.write(hoje_br() + "\n")
+
+
 def carregar_patrimonio(times):
     """Patrimônio em cartoletas da última vez que cada time foi consultado.
 
@@ -968,6 +1018,9 @@ def main():
     pts, caps = ({t["time_id"]: {} for t in times}, {t["time_id"]: {} for t in times}) \
         if forcar else carregar_cache(times, escal)
     patr = {} if forcar else carregar_patrimonio(times)
+    parciais = set() if forcar else ler_parciais()
+    if revisao_pendente():
+        revisar = True
 
     # Antes de mais nada: a rodada em andamento só vale se a API confirmar que
     # já tem jogador pontuando nela. Sem isso, o site fica na rodada fechada.
@@ -988,11 +1041,20 @@ def main():
 
     fechadas = parcial - 1 if parcial else maxrod
 
-    # As rodadas fechadas só voltam à API se ficou time sem pontuação ou se for
-    # a revisão diária (--revisar), que pega eventual correção de placar feita
-    # pelo Cartola depois do apito final.
+    # Rodadas que guardamos como parcial e que já fecharam: têm de voltar à API
+    # para trocar a nossa soma pelo número oficial. Isso não depende de horário
+    # nem de a execução cair em algum horário específico — depende só de a
+    # rodada ter fechado.
+    pendentes = {r for r in parciais if r != parcial and r <= fechadas}
+    if pendentes:
+        log(f"  Parciais a oficializar: rodada(s) {', '.join(map(str, sorted(pendentes)))}")
+
+    # As demais rodadas fechadas só voltam à API se ficou time sem pontuação,
+    # ou na revisão diária, que pega correção de placar feita pelo Cartola
+    # depois do apito final.
     faltando = [r for r in range(1, fechadas + 1)
-                if (revisar and r == fechadas)
+                if r in pendentes
+                or (revisar and r == fechadas)
                 or sum(1 for t in times if r in pts[t["time_id"]]) < len(times)]
 
     clubes = {}
@@ -1008,12 +1070,17 @@ def main():
         feito, falhas = coletar(times, pts, caps, patr, faltando, escal, clubes)
         if falhas:
             log(f"  Consultas sem resposta: {falhas}")
+        # o que veio agora é oficial: sai da lista de parciais a oficializar
+        completas = {r for r in faltando
+                     if sum(1 for t in times if r in pts[t["time_id"]]) == len(times)}
+        parciais -= completas
     elif not parcial:
         log("  Nada a coletar: tudo em dia.")
 
     if parcial:
         log("")
         coletar_ao_vivo(times, parcial, marcados, pts, caps, patr, escal, clubes)
+        parciais.add(parcial)
 
     if parcial:
         motivo = parcial_nao_vale(times, pts, parcial)
@@ -1024,6 +1091,7 @@ def main():
                 pts[t["time_id"]].pop(parcial, None)
                 caps[t["time_id"]].pop(parcial, None)
             escal.pop(parcial, None)
+            parciais.discard(parcial)
             maxrod = max(0, parcial - 1)
             parcial = None
             if maxrod < 1:
@@ -1058,6 +1126,10 @@ def main():
                                  "escalacoes": a["n"], "pontos": br(a["pontos"])})
         gravar_csv(os.path.join(SAIDA, "escalados.csv"), linhas_e,
                    ["rodada", "atleta_id", "apelido", "posicao", "clube", "escalacoes", "pontos"])
+
+    gravar_parciais(parciais)
+    if revisar:
+        marcar_revisao()
 
     with open(os.path.join(SAIDA, "resumo-whatsapp.txt"), "w", encoding="utf-8") as f:
         f.write(texto_whatsapp(maxrod, classif, mitao, capmito, rico, parcial))
