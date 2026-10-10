@@ -1,11 +1,12 @@
 name: Atualizar classificacao
 
-# Roda sozinho de 30 em 30 minutos para acompanhar a rodada em andamento,
-# e tambem pelo botao "Run workflow", quando voce quiser forcar.
+# Roda sozinho de 2 em 2 horas, e tambem pelo botao "Run workflow".
 # Quando nao ha rodada rolando, ele confere e encerra em segundos.
+# Ja foi de 30 em 30 minutos, mas o GitHub estrangula cron de alta frequencia
+# e as execucoes saiam a cada ~6 horas, em horarios imprevisiveis.
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch:
     inputs:
       forcar:
@@ -40,16 +41,14 @@ jobs:
         run: |
           if [ "${{ inputs.forcar }}" = "true" ]; then
             python3 coletor.py --forcar
-          elif [ "$(date -u +%H)" = "09" ]; then
-            python3 coletor.py --revisar
           else
             python3 coletor.py
           fi
 
-      # Os passos abaixo so rodam quando algum numero mudou de verdade.
-      # A hora da atualizacao nao conta como mudanca.
+      # Sempre grava: o coletor guarda em saida/ quais rodadas ainda estao como
+      # parcial e quando foi a ultima revisao. Se esse estado nao for commitado,
+      # ele se perde entre execucoes. O git ja pula sozinho quando nada mudou.
       - name: Guardar os dados coletados
-        if: steps.coleta.outputs.mudou == 'sim'
         run: |
           git config user.name  "Liga Vila Cartobrothers"
           git config user.email "acoes@users.noreply.github.com"
